@@ -23,18 +23,18 @@ How to make UI fit every screen, from a small phone to a TV, is in
 2. Read the components the project already has, so you reuse them. Judge them by this skill:
    existing code shows where UI lives, not how to write it.
 3. Where UI modules live, how they are required, and which module mounts the UI come from the
-   project's architecture rules (load the `roblox-dev:game-architecture` skill when the project has one).
+   project's architecture rules (load the `game-architecture` skill when the project has one).
    This skill covers how Vide code behaves.
 4. Match the project's style guide. Examples here call `create("Frame")({ ... })`; Vide's own docs
    write `create "Frame" { ... }`, which is the same call.
-5. When the project uses UI Labs (it has a `.storybook` module), load the `roblox-dev:vide-ui-labs` skill
+5. When the project uses UI Labs (it has a `.storybook` module), load the `vide-ui-labs` skill
    too: every component and screen gets a story in the same change.
 6. When the UI opens and closes often, keeps pages or tabs, holds hundreds of instances or a long
    scrolling list, uses a CanvasGroup, plays sounds, or is slow or flickers, load the
-   `roblox-dev:vide-performance` skill too.
-7. When the UI comes from a Figma design, load the `roblox-dev:figma-to-roblox` skill too.
+   `vide-performance` skill too.
+7. When the UI comes from a Figma design, load the `figma-to-roblox` skill too.
 8. When deciding what a screen shows, where its elements sit, or how it behaves for each input
-   (a new HUD, menu, or flow, or a review of one), load the `roblox-dev:game-ui-design` skill too.
+   (a new HUD, menu, or flow, or a review of one), load the `game-ui-design` skill too.
 
 Examples assume the project's Vide module is required as `Vide`, with the functions they use
 pulled out: `const create = Vide.create`, `const source = Vide.source`, and so on.
@@ -85,7 +85,7 @@ local destroyApp = mount(app, playerGui)
 ```
 
 Waits go before `mount`, never inside it. When the project forbids yields in startup methods
-(as `roblox-dev:game-architecture` does for `Init` and `Start`), move the wait and the `mount` into
+(as `game-architecture` does for `Init` and `Start`), move the wait and the `mount` into
 `task.spawn`.
 
 ### A component runs once, so bind values that change
@@ -138,7 +138,7 @@ State placement:
 
 - UI-only state (hovered, open tab, typed text): a `source` created inside the component.
 - State several components share: created by their common parent and passed down as props.
-- Game state: owned by a game module. With Charm, load the `roblox-dev:vide-charm` skill.
+- Game state: owned by a game module. With Charm, load the `vide-charm` skill.
 - Facts about the screen (its size, the primary input): sources in one shared module.
   Screen-level components read it and pass layout variants down as props. See "Lay out for the
   screen the player has".
@@ -385,7 +385,7 @@ message or symptom in [references/common-problems.md](references/common-problems
 
 Vide errors print `effect error stacktrace` or `error while running root()` with the failing
 line. After a change, compile-check and type-check the module the way the project does. After
-every UI change, run the story check from `roblox-dev:vide-ui-labs` on the stories that render
+every UI change, run the story check from `vide-ui-labs` on the stories that render
 the UI, then measure the mounted result by "Measuring the result" in
 `references/layout-quality.md`. Fix what they find, or tell the user why a finding stays. Without
 UI Labs, run the UI in a playtest and measure its PlayerGui the same way. Search the output log

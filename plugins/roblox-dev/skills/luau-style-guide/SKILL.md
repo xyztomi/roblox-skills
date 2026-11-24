@@ -20,7 +20,7 @@ for less common work are in `references/`, under the same section names:
 | [references/formatting.md](references/formatting.md) | Wrapping a statement that does not fit in 100 columns, or an `if` expression that does not fit on one line; also the General whitespace examples |
 | [references/examples.md](references/examples.md) | Writing a remote handler, requires inside or against a library, more than one block of requires, an enum branch that must handle every member, or a chain of async steps; or when how a rule applies is unclear |
 
-Comment wording and comment cleanup belong to the `roblox-dev:code-comments`
+Comment wording and comment cleanup belong to the `code-comments`
 skill. Load it alongside this one.
 
 ## Precedence
@@ -31,7 +31,7 @@ sets them for itself, and a new file takes them from its sibling files. Change
 the lines the task needs and leave the rest as they are. The rules below apply
 in full where the project has no established pattern.
 
-The project's own `CLAUDE.md` wins wherever it overrides or tightens a rule
+The project's own `AGENTS.md` wins wherever it overrides or tightens a rule
 below. When a rule here seems to contradict the Roblox guide or habits from
 it, [references/official-guide.md](references/official-guide.md) lists every
 place these rules depart from that guide, plus the guide's guiding

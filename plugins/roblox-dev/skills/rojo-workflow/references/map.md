@@ -4,7 +4,7 @@ For projects whose world comes from snapshot files: builders edit the map in a s
 place** that Rojo never syncs into, and files such as `map/Map.rbxm` and `map/Environment.rbxm`
 (often in Git LFS) are snapshots of it, mounted onto `Workspace.Map` and `Workspace.Environment`.
 Rojo syncs them into each dev place, and `syncbackRules` keeps syncback from writing them, so the
-map changes in Git only through a map pull. The repo's `CLAUDE.md` or README names the Build
+map changes in Git only through a map pull. The repo's `AGENTS.md` or README names the Build
 place.
 
 ## Pulling the map

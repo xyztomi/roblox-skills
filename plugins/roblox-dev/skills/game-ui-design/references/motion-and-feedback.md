@@ -1,7 +1,7 @@
 # Motion and feedback
 
 How much to animate, for how long, and what every press and reward should do. How to tween in
-code is in the `roblox-dev:vide` skill (`spring`, `TweenService`); this file sets the targets.
+code is in the `vide` skill (`spring`, `TweenService`); this file sets the targets.
 
 ## How much juice
 

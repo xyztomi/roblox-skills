@@ -4,14 +4,14 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { after, describe, test } from 'node:test';
 
 const HOOKS = join(dirname(fileURLToPath(import.meta.url)), '..');
-const DIR = mkdtempSync(join(tmpdir(), 'roblox-dev-hooks-test-'));
+const DIR = realpathSync(mkdtempSync(join(tmpdir(), 'roblox-dev-hooks-test-')));
 after(() => rmSync(DIR, { recursive: true, force: true }));
 
 let clock = Date.parse('2026-01-01T00:00:00Z');

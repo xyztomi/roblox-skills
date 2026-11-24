@@ -1,15 +1,16 @@
-# CLAUDE.md
+# AGENTS.md
 
-A Roblox game kept in Git and synced into Studio by Rojo. Each place in the experience is a folder
-under `places/`, holding its Rojo project (`default.project.json`) and its code (`src/`). A new
-game has one, `places/main`. pesde installs packages from `pesde.toml` into `roblox_packages/`
-(`ReplicatedStorage.Packages`) and Jest from `test_packages/pesde.toml` into
+A Roblox game kept in Git and synced into Studio by Rojo, worked on from OpenCode on macOS. Each
+place in the experience is a folder under `places/`, holding its Rojo project (`default.project.json`)
+and its code (`src/`). A new game has one, `places/main`. pesde installs packages from `pesde.toml`
+into `roblox_packages/` (`ReplicatedStorage.Packages`) and Jest from `test_packages/pesde.toml` into
 `ServerScriptService.Tests.Packages`. The Module Loader runs every system: the two `Start` scripts
 turn on its tag discovery and start it, the `LOAD_MODULE` tag on `Modules/Systems` marks what it
 loads, and `ExampleSystem` shows the layout a system follows.
 
-The `roblox-dev` plugin's skills hold this project's conventions: Luau style, comments,
-architecture, Rojo, testing, performance, and UI. Load the matching skill before the first edit.
+The `roblox-dev` OpenCode plugin holds this project's conventions: Luau style, comments,
+architecture, Rojo, testing, performance, and UI. Load the matching skill with the skill tool
+before the first edit; the skill gate names the ones an edit needs.
 
 ## Commands
 
@@ -32,9 +33,9 @@ stylua --check places tools
 ```
 
 Run each one as its own command, with nothing chained before or after it (no `; echo $?`). The
-project's settings let these five run without asking only in exactly this form. The sourcemap
-needs `--absolute`: Rojo writes paths relative to the place folder, and luau-lsp reads them
-relative to the repo root.
+project's `.opencode/opencode.json` lets these five run without asking only in exactly this form.
+The sourcemap needs `--absolute`: Rojo writes paths relative to the place folder, and luau-lsp reads
+them relative to the repo root.
 
 `luau-lsp analyze` reads Roblox's types from `globalTypes.None.d.luau`. Download it once, and again
 to pick up new engine APIs:

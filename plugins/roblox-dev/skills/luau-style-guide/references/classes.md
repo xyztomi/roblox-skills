@@ -23,7 +23,7 @@ Choose a shape for each thing from what it needs, not from habit:
 
 Build classes by composition: a class holds the objects it uses ("has a",
 "uses a", "can do") instead of extending a base class. In a game laid out by
-the `roblox-dev:game-architecture` skill, the one inheritance is a system's
+the `game-architecture` skill, the one inheritance is a system's
 Server and Client services extending its Shared service.
 
 ```lua
@@ -37,7 +37,7 @@ Anything that creates things can tear them down. A class that connects
 events, starts threads, or creates instances has a `Destroy` method that
 disconnects, cancels, and destroys all of them. Track each one as it is made
 (a Trove works well) so `Destroy` cannot miss any. Vide UI follows its own
-`cleanup` rule instead (see the `roblox-dev:vide` skill).
+`cleanup` rule instead (see the `vide` skill).
 
 ## Metatables
 

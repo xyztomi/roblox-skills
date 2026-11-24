@@ -60,7 +60,7 @@ describe('page-gate', () => {
   test('asks for the skill before a new page', () => {
     const output = gate(transcript(human('plan it')), newPage(), KIT_PAGE);
     assert.equal(output.permissionDecision, 'deny');
-    assert.match(output.permissionDecisionReason, /`pages:html-kit`/);
+    assert.match(output.permissionDecisionReason, /`html-kit`/);
     assert.doesNotMatch(output.permissionDecisionReason, /data-kit/);
     assert.ok(gate(transcript(human('plan it'), skill('other:html-kit')), newPage(), KIT_PAGE));
   });

@@ -1,7 +1,7 @@
 # Patterns
 
 Generic versions of the patterns the rules in `SKILL.md` name. Each assumes the project's Vide
-module is required as `Vide`, with the functions it uses pulled out the way the `roblox-dev:vide` skill
+module is required as `Vide`, with the functions it uses pulled out the way the `vide` skill
 shows, and follows the project's style guide. `LOUD_SNAKE_CASE` names are the component's own
 constants.
 
@@ -217,7 +217,7 @@ small pool of views, each holding a source with the item it shows.
 A view kept between visits takes a `Visit` source that the host bumps each time it shows the
 view again, and each part of the view that has an entrance resets when it changes.
 
-This is a deliberate exception to "effects stay pure" in the `roblox-dev:vide` skill: the reset reacts to an
+This is a deliberate exception to "effects stay pure" in the `vide` skill: the reset reacts to an
 outside event that reaches the view as a source, and it moves springs rather than setting sources
 to feed others. The deferral lets the host finish its own updates for that showing first. Where
 the host can call into the view directly, a reset function the view registers and the host calls

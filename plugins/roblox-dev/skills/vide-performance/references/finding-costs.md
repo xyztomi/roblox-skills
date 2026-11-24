@@ -20,9 +20,9 @@ const playerGui = game:GetService("Players").LocalPlayer.PlayerGui
    `roblox-performance/references/measuring.md`).
 2. **Name the frame.** For a spike, count instances added in that frame and profile only that
    action. For a slow stretch, probe layout and look for per-frame work. The probes are below.
-3. **Change one thing, then measure the same workload,** as `roblox-dev:roblox-performance` sets out.
+3. **Change one thing, then measure the same workload,** as `roblox-performance` sets out.
 4. **Check that the look did not change.** Sample positions or counts frame by frame where a
-   kept or reused view could differ from a new one, run the story check from `roblox-dev:vide-ui-labs`, and
+   kept or reused view could differ from a new one, run the story check from `vide-ui-labs`, and
    list for the user exactly what to check on screen.
 
 ## Frame times beside instances added

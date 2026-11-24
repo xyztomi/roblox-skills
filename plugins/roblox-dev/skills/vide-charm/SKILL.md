@@ -1,6 +1,6 @@
 ---
 name: vide-charm
-description: Charm (littensy/charm) reactive state used with Vide UI - Charm signals and computed values as game state, the vide-charm bridge (useSignalState), selectors, immutable table updates, and CharmSync server-to-client data. Load it together with the roblox-dev:vide skill whenever Vide UI reads or writes Charm state; when adding a Charm signal, computed, or store module that UI will display; when wiring CharmSync data into UI; and when a Vide label stops updating after a Charm signal changes.
+description: Charm (littensy/charm) reactive state used with Vide UI - Charm signals and computed values as game state, the vide-charm bridge (useSignalState), selectors, immutable table updates, and CharmSync server-to-client data. Load it together with the vide skill whenever Vide UI reads or writes Charm state; when adding a Charm signal, computed, or store module that UI will display; when wiring CharmSync data into UI; and when a Vide label stops updating after a Charm signal changes.
 ---
 
 # Vide with Charm
@@ -10,7 +10,7 @@ systems: a Vide binding or effect does not notice a Charm read, and a Charm effe
 a Vide read. The **bridge** between them is `useSignalState` from the vide-charm package, which
 turns a Charm getter into a Vide source.
 
-This skill targets Charm 0.11 and vide-charm 0.4. The `roblox-dev:vide` skill's rules still apply; load it
+This skill targets Charm 0.11 and vide-charm 0.4. The `vide` skill's rules still apply; load it
 too. Charm's full API and migration notes are in
 [references/charm-api.md](references/charm-api.md), and server-to-client sync is in
 [references/charm-sync.md](references/charm-sync.md).
@@ -24,7 +24,7 @@ too. Charm's full API and migration notes are in
    changes; it does not create game state of its own.
 
 Examples assume `Charm`, `VideCharm`, and `Vide` are the required modules, with Vide functions
-pulled out as in the `roblox-dev:vide` skill.
+pulled out as in the `vide` skill.
 
 ## Who owns which state
 
@@ -129,7 +129,7 @@ keep their rows and lets selectors skip updates.
 ### Lists: bridge the table, then use Vide's list functions
 
 Bridge the whole table and pass the source to Vide's `values()` or `indexes()`, following the
-`roblox-dev:vide` skill's rules for choosing between them.
+`vide` skill's rules for choosing between them.
 
 ```lua
 local pets = VideCharm.useSignalState(PetService.getPets)

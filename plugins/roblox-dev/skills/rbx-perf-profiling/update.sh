@@ -18,7 +18,7 @@ cd "$(dirname "$0")"
 REPO="https://raw.githubusercontent.com/Roblox/libmp/main"
 BASE="$REPO/docs"
 GUIDE="references/libmp-guide.md"
-# Claude Code keeps a skill's SKILL.md whole after compaction only under 20,000 characters.
+# Keep SKILL.md well under 20,000 characters, where compaction can start cutting it short.
 SKILL_MD_LIMIT=18000
 
 mkdir -p references

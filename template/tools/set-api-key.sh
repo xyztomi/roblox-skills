@@ -3,7 +3,7 @@
 # The key is read from hidden input and piped to `gh secret set`, so it never
 # shows on screen, in the shell history, or on a command line.
 #
-# Run it yourself in a terminal at the repo root (not through Claude):
+# Run it yourself in a terminal at the repo root (not through the agent):
 #     bash tools/set-api-key.sh
 set -euo pipefail
 

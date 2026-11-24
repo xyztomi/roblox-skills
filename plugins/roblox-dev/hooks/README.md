@@ -2,9 +2,28 @@
 
 Claude Code hooks that make sure the right skills are loaded before Luau edits and that edited Luau passes the project's checks. `hooks.json` wires them up. They watch Luau files (`.luau`, `.lua`) in a Rojo repo (a folder with a `default.project.json`) or a pesde workspace, and leave every other file alone. Each hook fails open: if it errors, the tool call or turn goes ahead.
 
+The same behavior is available to OpenCode through `../opencode/server.js`, which registers the
+skills and implements the four checks with OpenCode's tool, session, and event hooks. It shares the
+rules in `lib/`, so a change to the gate, the lint, or the verify checks applies to both adapters.
+
+## OpenCode adapter
+
+OpenCode loads plugins from `opencode.json`, from an installed package, or from a directory under
+`.opencode/plugins/`. The adapter registers every `skills/*/SKILL.md` with `ctx.skill.transform`, so
+the skills stay in one place.
+
+The four checks map to OpenCode like this:
+
+| Claude Code hook | OpenCode handler | Behavior |
+|---|---|---|
+| `skill-gate.mjs` (PreToolUse) | `tool.execute.before` on `edit`, `write`, `patch` | Throws before an edit whose skills are not loaded. Loaded skills come from `session.skill.activated`, and compaction clears them. |
+| `after-edit.mjs` (PostToolUse) | `tool.execute.after` | Appends convention findings to the tool result. Never blocks. |
+| `skill-hints.mjs` (UserPromptSubmit, Read, compact) | `session.prompt`, `tool.execute.after`, compaction events | Queues a hint and adds it as a system part before the next model request. |
+| `verify-gate.mjs` (Stop) | `experimental.idle` | Runs the checks on the turn's edited files, including subagent edits, and sends the findings as a synthetic message. Blocks once per prompt. |
+
 ## `skill-gate.mjs` (PreToolUse: Edit, Write, MultiEdit)
 
-Denies a Luau file edit until the skills it needs are loaded, and names them in the deny reason so Claude loads them and retries. Every edit needs `roblox-dev:luau-style-guide` and `roblox-dev:code-comments`. Vide code adds `vide` (plus `vide-ui-labs` for components and stories, `vide-charm` for Charm state), specs add `roblox-testing`, and a new script or a new `require` adds `game-architecture`. Only skills loaded under the `roblox-dev:` name count, so a same-named skill from another plugin doesn't satisfy it. Edits inside `roblox_packages` are denied outright. After three denials in a row it steps aside, in case it is missing a load.
+Denies a Luau file edit until the skills it needs are loaded, and names them in the deny reason so the agent loads them and retries. Every edit needs `luau-style-guide` and `code-comments`. Vide code adds `vide` (plus `vide-ui-labs` for components and stories, `vide-charm` for Charm state), specs add `roblox-testing`, and a new script or a new `require` adds `game-architecture`. In Claude Code only skills loaded under the `roblox-dev:` name count, so a same-named skill from another plugin doesn't satisfy it; OpenCode has one ID per skill. Edits inside `roblox_packages` are denied outright. After three denials in a row it steps aside, in case it is missing a load.
 
 ## `after-edit.mjs` (PostToolUse: Edit, Write, MultiEdit)
 
@@ -26,4 +45,8 @@ It blocks once per prompt: the next stop goes through, so Claude can explain a f
 
 ## Tests
 
-`npm test` from the repo root runs `test/hooks.test.mjs`, which pipes hook JSON into each hook against transcripts and a small Rojo repo it writes to a temp folder. The test that runs fake tools end to end uses shell scripts, so it is skipped on Windows and runs in CI.
+`npm test` from the repo root runs `test/hooks.test.mjs` (the Claude Code hooks), `opencode/test`
+(the OpenCode adapters), and `pages`' tests. The hook tests pipe hook JSON into each hook against
+transcripts and a small Rojo repo it writes to a temp folder. The test that runs fake tools end to
+end uses shell scripts, so it is skipped on Windows and runs in CI. The OpenCode tests drive the
+same gate, lint, and hint decisions through fake OpenCode handlers.

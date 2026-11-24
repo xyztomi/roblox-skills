@@ -12,9 +12,9 @@ short words beside icons, big targets kept out of the thumb corners, play on the
 layouts built on the engine's live signals instead of hardcoded numbers.
 
 This skill decides **what** the UI shows, **where** it sits, and **how** it behaves for each input.
-Building it is other skills' job: `roblox-dev:vide` writes the code (its `references/screens.md` owns the
-screen module, the root `UIScale`, and the touch control measurements), `roblox-dev:figma-to-roblox` ports a
-design, and `roblox-dev:roblox-performance` (`references/ui.md`) owns what UI costs. Shops, purchase prompts,
+Building it is other skills' job: `vide` writes the code (its `references/screens.md` owns the
+screen module, the root `UIScale`, and the touch control measurements), `figma-to-roblox` ports a
+design, and `roblox-performance` (`references/ui.md`) owns what UI costs. Shops, purchase prompts,
 and anything sold for Robux are out of scope.
 
 ## Evidence labels
@@ -72,7 +72,7 @@ playtest or funnel can overturn, and say so when you recommend one.
    or three channels, by `references/motion-and-feedback.md`. Done when every animation has a
    duration, an easing, and a reduced-motion version.
 
-7. **Verify.** Hand the build to `roblox-dev:vide` and its story check. Then look at the screen in the
+7. **Verify.** Hand the build to `vide` and its story check. Then look at the screen in the
    Device Emulator on a small phone, a tablet, 1080p, and the Xbox emulator, with the player text
    size at Largest. Done when each screenshot shows nothing clipped, overlapping, or out of reach,
    and the open questions are written down as playtest or funnel tasks
@@ -82,7 +82,7 @@ playtest or funnel can overturn, and say so when you recommend one.
 
 Landscape phone first. The bottom-left and bottom-right corners belong to the thumbstick and jump
 button [standard]. With default movement, the thumbstick can appear anywhere in the left 40% and
-lower two thirds of the screen (`roblox-dev:vide` `references/screens.md`).
+lower two thirds of the screen (`vide` `references/screens.md`).
 
 | Zone | Use for |
 |---|---|
@@ -145,7 +145,7 @@ When two principles conflict, the earlier one wins.
 | Item | Default | Label |
 |---|---|---|
 | Touch target | 10 mm minimum, 15-20 mm for primary actions, about 2 mm gaps | [study; practitioner] |
-| Thumb button in `roblox-dev:vide`'s UI units | 44 or more (its floor); primary actions larger | [practitioner] |
+| Thumb button in `vide`'s UI units | 44 or more (its floor); primary actions larger | [practitioner] |
 | Text, console | 26 px body height at 1080p, 52 px at 4K | [standard] XAG 101 |
 | Text, PC and VR | 18 px at 1080p | [standard] XAG 101 |
 | Text scaling | Layout survives `PreferredTextSize` Largest without loss | [standard; inference] |

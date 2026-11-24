@@ -270,7 +270,7 @@ const TableUtils = require(TableUtilsHandle:Wait() :: typeof(TableUtilsHandle))
 
 ## Verifying
 
-On top of the checks in CLAUDE.md:
+On top of the checks in AGENTS.md:
 
 - Run the relocation check in the reference after adding or moving modules.
 - Start a playtest and read the output log, filtered by `>> Failed`, `Skipping :Start()`,

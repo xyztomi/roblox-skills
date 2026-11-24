@@ -2,7 +2,7 @@
 
 How to turn the visuals SKILL.md marks baked into Roblox images. The first section and the last
 two apply to every image; the middle three are one kind each. Image memory and draw-call costs
-are in the `roblox-dev:roblox-performance` skill's `references/ui.md`.
+are in the `roblox-performance` skill's `references/ui.md`.
 
 ## Sizing every image
 
@@ -29,7 +29,7 @@ sheet pays off only when its pieces show together.
 
 - **Why a sheet.** One fetch instead of many, so the family appears at once instead of icon by
   icon; one asset to moderate and track; and images from one sheet drawn next to each other share
-  a draw call (`roblox-dev:roblox-performance` skill, `references/ui.md`).
+  a draw call (`roblox-performance` skill, `references/ui.md`).
 - **Why not.** A sheet loads whole even when one piece shows, it is capped at 1024 pixels per side
   (Sizing, above), and changing one piece means re-uploading the sheet under a new asset id.
 - **Split by when art shows, not by kind.** Keyboard, gamepad, and touch prompts are three

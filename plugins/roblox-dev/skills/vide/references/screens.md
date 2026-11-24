@@ -277,7 +277,7 @@ a quarter more on a TV, which is read from a couch:
   already divide by it, so breakpoints and fits keep working at every scale.
 
 When the game's ScreenGuis are not all built in one place, a client-only setup module (in a system,
-as the `roblox-dev:game-architecture` skill places setups) can attach the scale to ScreenGuis as they appear
+as the `game-architecture` skill places setups) can attach the scale to ScreenGuis as they appear
 in `PlayerGui`, following `Screen.uiScale` from an `effect` inside a `root`. Have it scale only the
 ScreenGuis the game marks, with a tag or an attribute. A watcher that scales everything it finds
 also scales GUIs that Roblox, a library, or a tool adds later, and any GUI that places things in
@@ -309,7 +309,7 @@ screens, where the scale is no longer 1.
   divided by the scale in effect there: `Screen.uiScale()` times any `UIScale` on the frames in
   between. Without that, a point lands 33 percent too far out at 1440p and twice as far at 4K.
 - Better, measure less. Anchors, `AutomaticSize`, and list layouts place things without reading
-  anything back, and reading `AbsoluteSize` forces layout to run (see the `roblox-dev:roblox-performance`
+  anything back, and reading `AbsoluteSize` forces layout to run (see the `roblox-performance`
   skill).
 - `AbsolutePosition` and the `Position` of a mouse or touch `InputObject` both start below the
   Roblox topbar, even in a ScreenGui that ignores the topbar inset, where a frame at the very top
@@ -334,7 +334,7 @@ Height of the drawn text, in real pixels, for a label under a `UIScale` (measure
 | `TextScaled` in a box 400 real pixels tall, any `MaxTextSize` | | 100 | 100 |
 
 A fixed `TextSize` follows the scale and needs nothing, which is one more reason to prefer it (the
-`roblox-dev:roblox-performance` skill has the others). `TextScaled` text follows its box, but the limits on a
+`roblox-performance` skill has the others). `TextScaled` text follows its box, but the limits on a
 `UITextSizeConstraint` are real pixels, so:
 
 - **A cap stops text from growing with the root scale.** On a 4K screen the boxes double and the
@@ -522,7 +522,7 @@ end
 - **Switch variants on `Screen.isPhone`, never on the fit.** The fit depends on the variant's
   size, so each would change the other.
 - **A fit scale is fractional**, so the panel's text lands on pixel sizes nothing else on screen
-  uses, which the `roblox-dev:roblox-performance` skill's text rules count against. A compact variant sized
+  uses, which the `roblox-performance` skill's text rules count against. A compact variant sized
   to fit at 1 avoids it.
 - **Reserve room for chrome that stays up.** `ReservedWidth` is the width of a docked column the
   panel must not cover. Move the dock's center by half of it, so the panel centers in what is
@@ -594,7 +594,7 @@ One arrangement that worked on phones held sideways, as an option to show the us
 
 - **Give each layout variant a control.** A boolean control passed to `IsCompact` shows both
   layouts in one story, on any Studio viewport. It belongs in a group named for what it changes,
-  such as `Layout` (the `roblox-dev:vide-ui-labs` skill covers grouping and ordering).
+  such as `Layout` (the `vide-ui-labs` skill covers grouping and ordering).
 - **UI Labs has no device preview, and `Screen:Simulate` alone is not one.** A story has no root
   scale, and its preview frame is not the simulated size. To see a component on a small screen,
   pin the screen while the story builds, and build the story inside a frame sized to
@@ -612,7 +612,7 @@ One arrangement that worked on phones held sideways, as an option to show the us
   again after `jest.resetModules()`. Otherwise it reads whichever device Studio's emulator is set
   to, and passes or fails with it. Each spec file loads its own copy of the module, so nothing
   needs putting back.
-- How a layout looks stays out of specs, as the `roblox-dev:roblox-testing` skill says. If the user wants the
+- How a layout looks stays out of specs, as the `roblox-testing` skill says. If the user wants the
   scale policy or the fit calculation pinned, plan it through that skill: agree the behaviors
   first, and assert the rule (never below 1, never above the cap), not the tuning numbers.
 

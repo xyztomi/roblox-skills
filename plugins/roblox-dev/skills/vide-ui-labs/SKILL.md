@@ -1,6 +1,6 @@
 ---
 name: vide-ui-labs
-description: UI Labs, the Roblox Studio storybook plugin, used with Vide - .story and .storybook modules, controls, the UI Labs utility package, and keeping UI code safe to run in edit mode. Load it together with the roblox-dev:vide skill whenever you create or change a Vide component or screen (every piece of UI gets a story in the same change); when writing or fixing a story, storybook, or controls, including grouping and ordering a story's controls panel; when a story errors, does not reload, or does not show up in UI Labs; and when UI code must run safely outside a playtest.
+description: UI Labs, the Roblox Studio storybook plugin, used with Vide - .story and .storybook modules, controls, the UI Labs utility package, and keeping UI code safe to run in edit mode. Load it together with the vide skill whenever you create or change a Vide component or screen (every piece of UI gets a story in the same change); when writing or fixing a story, storybook, or controls, including grouping and ordering a story's controls panel; when a story errors, does not reload, or does not show up in UI Labs; and when UI code must run safely outside a playtest.
 ---
 
 # UI Labs with Vide
@@ -10,7 +10,7 @@ them whenever the code they use changes. A story is a ModuleScript whose name en
 Every Vide component and screen gets a story, written in the same change as the UI: it is where
 the user sees the UI, compares design ideas, and checks edge cases.
 
-This skill targets UI Labs plugin 1.6 and utility package 2.4. The `roblox-dev:vide` skill's rules apply to
+This skill targets UI Labs plugin 1.6 and utility package 2.4. The `vide` skill's rules apply to
 story code too; load it as well. The full list of controls and `Environment` utilities is in
 [references/api.md](references/api.md). The script in
 [references/story-check.md](references/story-check.md) mounts stories the way UI Labs does and
@@ -42,7 +42,7 @@ its own `require`, `script`, and `_G`. It does this again on every reload. So:
 - **Components get their data through props.** A component that a story renders never requires
   game services, state stores, or remotes, and never reads `Players.LocalPlayer`. Split a screen
   into a view component (props in, instances out, with a story) and a thin wrapper that connects
-  it to game state and passes sources down (no story). A screen module written the way the `roblox-dev:vide`
+  it to game state and passes sources down (no story). A screen module written the way the `vide`
   skill's `references/screens.md` describes is safe to require (it connects to nothing in edit
   mode, and a story can pin it). Layout variants still arrive as props.
 - **A story only touches its own frame.** Effects outside the UI (blur in `Lighting`, camera
@@ -207,19 +207,19 @@ order the controls of every story:
   the same story mounted twice ("Mount On Top") with auto reload turned off on one copy.
 - Screen sizes: a control for each layout variant the component has. "View on Viewport" (`Q`)
   shows the story in the game viewport, at Studio's viewport size. The zoom tool scales with
-  `UIScale`, which can distort some layouts. The `roblox-dev:vide` skill's `references/screens.md` covers
+  `UIScale`, which can distort some layouts. The `vide` skill's `references/screens.md` covers
   layout across devices and what a story can show of it.
 
 ## Steps
 
-1. Write or change the component by the `roblox-dev:vide` skill.
+1. Write or change the component by the `vide` skill.
 2. In the same change, write or update its story so every prop that changes the look has a
    control, grouped and ordered (see "Organize the controls").
 3. Run the story check in [references/story-check.md](references/story-check.md) on the new or
    changed stories (a story, or the folder holding them), by running its Luau in the edit
    session. It mounts each story the way UI Labs does and reports errors, yields, and anything
    left in the DataModel. Fix what it reports, then run it again.
-4. Measure each changed story's layout by "Measuring the result" in the `roblox-dev:vide`
+4. Measure each changed story's layout by "Measuring the result" in the `vide`
    skill's `references/layout-quality.md`: cut or overlapping text, corners, clipped outlines,
    scroll bar room, gaps. Set controls to the long-text and many-items cases too (the story
    check's last note shows how). Fix what it finds.

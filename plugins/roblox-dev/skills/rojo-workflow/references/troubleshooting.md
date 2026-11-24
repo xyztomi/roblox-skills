@@ -33,12 +33,12 @@ marketplace copy so only one loads.
 ## "Could not start the Rojo server ... The address may already be in use"
 
 Another `rojo serve` is running on that port (another terminal, another worktree, or a server an
-agent started in the background). Find it with `netstat -ano | findstr :34872` (Windows) and end
-that process, or start this one with `--port <other port>` and enter that port in the plugin.
+agent started in the background). Find it with `lsof -i :34872` and end that process, or start this
+one with `--port <other port>` and enter that port in the plugin.
 
 ## Two different `rojo` on PATH
 
-`where.exe rojo` (Windows) or `which -a rojo` lists both `.rokit\bin\rojo` and `.pesde\bin\rojo`,
+`which -a rojo` lists both `~/.rokit/bin/rojo` and `~/.pesde/bin/rojo`,
 and `rojo --version` disagrees with `rokit.toml`. `pesde init` with `pesde/scripts_rojo` adds a
 `rojo` dev dependency (`pesde/rojo`, 7.7.0 at the time of writing), and pesde links its binary into
 `~/.pesde/bin`; whichever folder comes first on PATH wins. Pick one owner: remove the `rojo` dev
@@ -52,10 +52,10 @@ inside the project folder. After `rokit.toml` changes (a version bump, a fresh c
 edit), run `rokit install`; a listed version that isn't installed fails with `os error 2` or
 `os error 3`.
 
-## "is not recognized" right after installing a tool
+## "command not found" right after installing a tool
 
 Terminals and VS Code keep the PATH they started with. Close every terminal and every VS Code
-window, then reopen; restart Windows if that isn't enough.
+window, then reopen. On macOS, check that `~/.zprofile` loads Homebrew and the tool folders.
 
 ## A JSON parse error at line 1, column 1
 
@@ -65,7 +65,7 @@ File contains malformed JSON: ... JSONC parse error ... Unexpected token on line
 
 The file starts with a UTF-8 byte order mark. Re-save it as UTF-8 without BOM (in VS Code: the
 encoding in the status bar, **Save with Encoding**, **UTF-8**). Windows PowerShell 5.1's
-`Set-Content` and `Out-File` write a BOM.
+`Set-Content` and `Out-File` write a BOM; macOS editors normally do not.
 
 ## luau-lsp has no types: unknown requires, no autocomplete
 

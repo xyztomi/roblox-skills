@@ -1,0 +1,27 @@
+{
+  "name": "pages",
+  "version": "1.1.0",
+  "description": "The html-kit skill for themed HTML plans, reports, and diagrams, with an OpenCode gate that keeps new pages on the kit.",
+  "type": "module",
+  "license": "MIT",
+  "author": {
+    "name": "Crusherfire Media"
+  },
+  "homepage": "https://github.com/Crusherfire-Media/roblox-skills",
+  "repository": "https://github.com/Crusherfire-Media/roblox-skills",
+  "exports": {
+    ".": "./opencode/server.js"
+  },
+  "files": [
+    "opencode",
+    "skills",
+    "hooks/lib"
+  ],
+  "keywords": [
+    "opencode-plugin",
+    "html",
+    "plans",
+    "reports",
+    "diagrams"
+  ]
+}

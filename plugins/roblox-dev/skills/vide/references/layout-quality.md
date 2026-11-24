@@ -33,7 +33,7 @@ create("Frame")({
 ```
 
 - `ClipsDescendants` clips to the square box and ignores `UICorner`, so it never rounds children.
-  A `CanvasGroup` with a `UICorner` does, at a texture-memory cost (`roblox-dev:vide-performance` skill).
+  A `CanvasGroup` with a `UICorner` does, at a texture-memory cost (`vide-performance` skill).
 - A patch in the outer frame's own color that squares one corner on purpose (a spine, a tab
   joint) is fine: it reads as part of the frame.
 - Keep both radii and the inset as named constants next to each other, so changing one shows
@@ -89,7 +89,7 @@ create("ScrollingFrame")({
   and the gaps. A row with a small switch gives its text more room than a row with a wide
   slider; one fixed text width for every row type cuts the short-control rows for no reason.
 - Size for the longest real string, not the sample. Give every story a long-text control, so the
-  cut case is one control away (the `roblox-dev:vide-ui-labs` skill).
+  cut case is one control away (the `vide-ui-labs` skill).
 - Decide what happens to text that can still run long: wrap it into a box that grows
   (`TextWrapped` with `AutomaticSize.Y`), or cut it (`TextTruncate.AtEnd`) and show the rest in a
   tooltip. Text with neither spills past its box.
@@ -148,7 +148,7 @@ leftover pixels to one element.
 Mount the UI where the engine lays it out, then run Luau in that session that walks its
 GuiObjects and reads their measured boxes (`AbsolutePosition` and `AbsoluteSize`):
 
-- In edit mode, mount a story with the loader from `roblox-dev:vide-ui-labs`'s
+- In edit mode, mount a story with the loader from `vide-ui-labs`'s
   `references/story-check.md` into a `Frame` sized like the story's preview, inside a ScreenGui
   under `CoreGui`, so nothing is saved with the place. Destroy the scope and the ScreenGui when
   done.

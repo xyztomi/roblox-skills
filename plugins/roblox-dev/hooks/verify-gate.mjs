@@ -7,33 +7,15 @@
 // (`stop_hook_active`), or this gate's feedback is already in the turn, the stop goes through.
 // The model may have fixed the findings, or explained why one doesn't apply.
 
-import { existsSync, statSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { existsSync } from 'node:fs';
 import { runHook } from './lib/hook-io.mjs';
 import { agentTranscripts, fileEdits, isHumanPrompt, readEntries, toolCalls, userTexts } from './lib/transcript.mjs';
-import { findRojoProject } from './lib/rojo.mjs';
+import { projectRoot } from './lib/project.mjs';
 import { filesInRoot, findTool, runChecks } from './lib/verify.mjs';
 
 // Starts every block reason, so a later stop can see this gate already blocked once.
 const BLOCK_HEADING = 'Luau checks before this turn ends:';
 const TOOLS = ['luau-lsp', 'selene', 'stylua'];
-
-function isDirectory(path) {
-  try {
-    return statSync(path).isDirectory();
-  } catch {
-    return false;
-  }
-}
-
-// The project root the checks run in: the Rojo repo holding the session's folder, else that
-// folder itself (a pesde workspace).
-function projectRoot(cwd) {
-  if (typeof cwd !== 'string' || cwd === '' || !isDirectory(cwd)) {
-    return undefined;
-  }
-  return findRojoProject(cwd)?.root ?? resolve(cwd);
-}
 
 // The Luau files edited in this turn: by the main agent since the prompt, and by subagents
 // whose transcripts changed since then.
