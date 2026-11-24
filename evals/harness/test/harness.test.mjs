@@ -5,152 +5,131 @@ import path from "node:path";
 import { after, describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { buildBenchmark, harnessSummary, stats } from "../aggregate.mjs";
 import { buildGrading, runTaskChecks, trimEvidence } from "../lib/checks.mjs";
-import { childEnv, judgeArgs, trialArgs } from "../lib/claude.mjs";
-import { checkIsolation, isolationArgs } from "../lib/isolation.mjs";
-import { hooksFired, parseEvents, skillFileReads, skillsLoaded, usageTotals } from "../lib/stream.mjs";
+import { checkIsolation } from "../lib/isolation.mjs";
+import { childEnv, parseModel, trialConfig } from "../lib/opencode.mjs";
+import {
+	finalText,
+	findSessionID,
+	hooksFired,
+	parseEvents,
+	skillFileReads,
+	skillsLoaded,
+	summarizeResult,
+	toolCallCounts,
+	usageTotals,
+} from "../lib/stream.mjs";
 import { loadTask, validateTask } from "../lib/task.mjs";
 import { ancestorMemoryFiles, resolveInside } from "../lib/workspace.mjs";
 import { keepFile, redact } from "../export-results.mjs";
-import { assignLabels, buildJudgePrompt, fillTemplate, renderFacts, scrub, summarizeJudgements } from "../judge.mjs";
+import { assignLabels, buildJudgePrompt, fillTemplate, judgeInstruction, parseJudgeVerdict, renderFacts, scrub, summarizeJudgements } from "../judge.mjs";
 import { redactPaths } from "../prove-isolation.mjs";
 import { trialStatus } from "../run-trials.mjs";
+import { replaceDescription, splitQueries, triggeredBeforeEdit } from "../trigger-eval.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const tmp = mkdtempSync(path.join(os.tmpdir(), "harness-test-"));
 after(() => rmSync(tmp, { recursive: true, force: true }));
 
-const builtin = [{ name: "cc-plugin-privacy", source: "cc-plugin-privacy@builtin", path: "builtin" }];
-const cleanInit = (extra = {}) => ({
-	plugins: builtin,
-	skills: ["deep-research", "simplify"],
-	agents: ["Explore", "Plan"],
-	mcp_servers: [],
-	tools: ["Read"],
-	tool_count: 1,
-	...extra,
-});
-
 describe("stream parsing", () => {
 	const lines = [
-		JSON.stringify({ type: "system", subtype: "init", plugins: [] }),
+		JSON.stringify({ type: "step_start", sessionID: "ses_1", part: { type: "step-start" } }),
 		"not json",
-		JSON.stringify({ type: "system", subtype: "hook_started", hook_id: "h1", hook_name: "UserPromptSubmit", hook_event: "UserPromptSubmit" }),
-		JSON.stringify({ type: "system", subtype: "hook_response", hook_id: "h1", hook_name: "UserPromptSubmit", hook_event: "UserPromptSubmit", exit_code: 0, output: "MARK" }),
-		JSON.stringify({
-			type: "assistant",
-			message: {
-				content: [
-					{ type: "tool_use", name: "Skill", input: { skill: "roblox-dev:vide" } },
-					{ type: "tool_use", name: "Read", input: { file_path: "C:/p/skills/vide/SKILL.md" } },
-				],
-			},
-		}),
-		JSON.stringify({
-			type: "result",
-			modelUsage: {
-				a: { inputTokens: 1, outputTokens: 2, cacheReadInputTokens: 3, cacheCreationInputTokens: 4 },
-				b: { inputTokens: 10, outputTokens: 0, cacheReadInputTokens: 0, cacheCreationInputTokens: 0 },
-			},
-		}),
-		'{"type":"assistant","message":', // a trial killed mid-write
+		JSON.stringify({ type: "tool_use", sessionID: "ses_1", part: { tool: "skill", state: { status: "completed", input: { id: "vide" } } } }),
+		JSON.stringify({ type: "tool_use", sessionID: "ses_1", part: { tool: "read", state: { status: "completed", input: { path: "/p/skills/vide/SKILL.md" } } } }),
+		JSON.stringify({ type: "tool_use", sessionID: "ses_1", part: { tool: "write", state: { status: "error", error: "Load `code-comments` with the skill tool, then retry this edit unchanged." } } }),
+		JSON.stringify({ type: "tool_use", sessionID: "ses_1", part: { tool: "edit", state: { status: "completed", output: "ok\nLuau convention check on the lines this edit added" } } }),
+		JSON.stringify({ type: "step_finish", sessionID: "ses_1", part: { tokens: { input: 10, output: 2, reasoning: 1, cache: { read: 3, write: 4 } }, cost: 0.01 } }),
+		JSON.stringify({ type: "text", sessionID: "ses_1", part: { text: "final answer" } }),
+		'{"type":"text","part":', // a trial killed mid-write
 	].join("\n");
 	const events = parseEvents(lines);
+	const context = [
+		{ type: "user", text: "do it" },
+		{ type: "assistant", content: [{ type: "tool", name: "skill", state: { status: "completed", input: { id: "vide" } } }] },
+		{ type: "synthetic", text: "Luau checks before this turn ends:\n\nstylua:\nDiff in src/A.luau" },
+	];
 
-	test("skips lines that aren't JSON", () => assert.equal(events.length, 5));
-	test("finds Skill tool loads and SKILL.md reads", () => {
-		assert.deepEqual(skillsLoaded(events), ["roblox-dev:vide"]);
-		assert.deepEqual(skillFileReads(events), ["C:/p/skills/vide/SKILL.md"]);
+	test("skips lines that aren't JSON", () => assert.equal(events.length, 7));
+	test("finds the session id and tool uses", () => {
+		assert.equal(findSessionID(events), "ses_1");
+		assert.deepEqual(toolCallCounts(events), { skill: 1, read: 1, write: 1, edit: 1 });
 	});
-	test("pairs hook start and response events", () => {
-		assert.deepEqual(hooksFired(events), [{ hook_name: "UserPromptSubmit", hook_event: "UserPromptSubmit", exit_code: 0, output: "MARK" }]);
+	test("finds Skill tool loads, SKILL.md reads, and context skill messages", () => {
+		assert.deepEqual(skillsLoaded(events, context), ["vide"]);
+		assert.deepEqual(skillFileReads(events), ["/p/skills/vide/SKILL.md"]);
 	});
-	test("sums tokens across models", () => {
-		const usage = usageTotals(events.at(-1));
+	test("derives hook evidence from the gate, lint, and verify messages", () => {
+		const hooks = hooksFired(events, context);
+		assert.deepEqual(hooks.map((h) => h.hook_name), ["skill-gate", "after-edit", "verify-gate"]);
+	});
+	test("sums tokens, reasoning, and cache across steps", () => {
+		const usage = usageTotals(events);
 		assert.equal(usage.total_tokens, 20);
-		assert.equal(usage.input_tokens, 11);
+		assert.equal(usage.input_tokens, 10);
+		assert.equal(usage.output_tokens, 3);
+		assert.equal(usage.cost_usd, 0.01);
+	});
+	test("summarizes the run and takes the last text as the answer", () => {
+		const result = summarizeResult(events);
+		assert.equal(result.is_error, false);
+		assert.equal(result.num_turns, 1);
+		assert.equal(finalText(events), "final answer");
 	});
 });
 
 describe("isolation check", () => {
-	test("accepts a clean baseline", () => {
-		assert.deepEqual(checkIsolation(cleanInit(), { setup: "baseline" }), { ok: true, problems: [] });
+	const plugin = "/tmp/plugin";
+
+	test("accepts a clean baseline and the plugin under test", () => {
+		assert.deepEqual(checkIsolation({ config: trialConfig(), setup: "baseline" }), { ok: true, problems: [] });
+		const config = trialConfig({ pluginDir: plugin });
+		assert.equal(checkIsolation({ config, setup: "with-skill", pluginDir: plugin, pluginSkills: ["vide"] }).ok, true);
 	});
 
-	test("accepts the plugin under test in with-skill", () => {
-		const init = cleanInit({
-			plugins: [...builtin, { name: "roblox-dev", source: "roblox-dev@inline" }],
-			skills: ["roblox-dev:vide", "simplify"],
-		});
-		assert.equal(checkIsolation(init, { setup: "with-skill", expectedPlugin: "roblox-dev" }).ok, true);
-	});
-
-	test("flags a user-scope plugin with the same skills", () => {
-		const init = cleanInit({
-			plugins: [...builtin, { name: "roblox-dev", source: "roblox-dev@inline" }, { name: "roblox", source: "roblox@private" }],
-			skills: ["roblox-dev:vide", "roblox:vide"],
-			agents: ["roblox:reviewer"],
-		});
-		const res = checkIsolation(init, { setup: "with-skill", expectedPlugin: "roblox-dev" });
+	test("flags another plugin, an MCP server, or a skill outside the plugin", () => {
+		const config = trialConfig({ pluginDir: plugin });
+		config.plugins.push("/tmp/other");
+		config.mcp.servers = { studio: { type: "local", command: ["x"] } };
+		const res = checkIsolation({ config, setup: "with-skill", pluginDir: plugin, pluginSkills: ["vide"], events: [{ type: "tool_use", part: { tool: "skill", state: { status: "completed", input: { id: "roblox" } } } }] });
 		assert.equal(res.ok, false);
-		assert.ok(res.problems.some((p) => p.includes("roblox@private")));
-		assert.ok(res.problems.some((p) => p.includes("roblox:vide")));
-		assert.ok(res.problems.some((p) => p.includes("roblox:reviewer")));
+		assert.ok(res.problems.some((p) => p.includes("/tmp/other")));
+		assert.ok(res.problems.some((p) => p.includes("studio")));
+		assert.ok(res.problems.some((p) => p.includes("skill outside")));
 	});
 
-	test("flags the plugin under test, MCP servers, and hooks in the baseline", () => {
-		const init = cleanInit({
-			plugins: [...builtin, { name: "roblox-dev", source: "roblox-dev@inline" }],
-			skills: ["roblox-dev:vide"],
-			mcp_servers: [{ name: "studio" }],
-		});
-		const res = checkIsolation(init, { setup: "baseline", hooks: [{ hook_name: "SessionStart" }] });
-		assert.equal(res.problems.length, 4);
-	});
-
-	test("flags with-skill when the plugin under test didn't load", () => {
-		const res = checkIsolation(cleanInit(), { setup: "with-skill", expectedPlugin: "roblox-dev" });
+	test("flags skills in the baseline", () => {
+		const res = checkIsolation({ config: trialConfig(), setup: "baseline", events: [{ type: "tool_use", part: { tool: "skill", state: { status: "completed", input: { id: "vide" } } } }] });
 		assert.equal(res.ok, false);
-	});
-
-	test("flags a missing init event", () => {
-		assert.equal(checkIsolation(null, { setup: "baseline" }).ok, false);
+		assert.match(res.problems[0], /skills loaded in the baseline: vide/);
 	});
 });
 
-describe("claude arguments", () => {
-	test("isolation flags drop user settings, MCP, user memory, and confine file tools", () => {
-		const args = isolationArgs();
-		assert.ok(args.includes("--restricted"));
-		assert.equal(args[args.indexOf("--setting-sources") + 1], "project,local");
-		assert.ok(args.includes("--strict-mcp-config"));
-		const settings = JSON.parse(args[args.indexOf("--settings") + 1]);
-		assert.match(settings.claudeMdExcludes[0], /\/\.claude\/\*\*$/);
-		assert.ok(!args.includes("--plugin-dir"));
+describe("opencode configuration", () => {
+	test("a trial config loads only its plugin and no MCP servers", () => {
+		const config = trialConfig({ pluginDir: "/tmp/plugin" });
+		assert.deepEqual(config.plugins, ["/tmp/plugin"]);
+		assert.deepEqual(config.mcp.servers, {});
+		assert.ok(config.permissions.some((r) => r.action === "shell" && r.resource === "*" && r.effect === "deny"));
+		assert.ok(config.permissions.some((r) => r.action === "shell" && r.resource === "stylua *" && r.effect === "allow"));
+		assert.ok(config.permissions.some((r) => r.resource === "/tmp/plugin/*" && r.effect === "allow"));
 	});
 
-	test("with-skill loads the plugin and lets file tools read it", () => {
-		const args = isolationArgs({ pluginDir: "/tmp/plugin" });
-		assert.equal(args[args.indexOf("--plugin-dir") + 1], "/tmp/plugin");
-		assert.equal(args[args.indexOf("--add-dir") + 1], "/tmp/plugin");
+	test("child sessions drop OpenCode and Claude state and use the private config", () => {
+		const env = childEnv("/tmp/config", { PATH: "x", OPENCODE_SESSION_ID: "s", OPENCODE_CONFIG_DIR: "old", CLAUDECODE: "1", CLAUDE_CODE_SESSION_ID: "s", AI_AGENT: "a" });
+		assert.equal(env.PATH, "x");
+		assert.equal(env.OPENCODE_CONFIG_DIR, "/tmp/config");
+		assert.equal(env.OPENCODE_DISABLE_CLAUDE_CODE, "1");
+		assert.equal(env.OPENCODE_SESSION_ID, undefined);
+		assert.equal(env.CLAUDECODE, undefined);
+		assert.equal(env.AI_AGENT, undefined);
 	});
 
-	test("trials never get a blanket Bash allow", () => {
-		const args = trialArgs({ model: "opus" });
-		assert.ok(!args.includes("Bash"));
-		assert.ok(!args.includes("PowerShell"));
-		assert.equal(args[args.indexOf("--permission-prompts") + 1], "none");
-	});
-
-	test("the judge gets no tools", () => {
-		const args = judgeArgs({ model: "opus", schema: { type: "object" } });
-		assert.equal(args[args.indexOf("--tools") + 1], "");
-		assert.ok(!args.includes("--plugin-dir"));
-	});
-
-	test("child sessions don't inherit the launching session's state", () => {
-		const env = childEnv({ PATH: "x", CLAUDECODE: "1", CLAUDE_CODE_SESSION_ID: "s", CLAUDE_EFFORT: "max", AI_AGENT: "a", CLAUDE_CONFIG_DIR: "c" });
-		assert.deepEqual(env, { PATH: "x", CLAUDE_CONFIG_DIR: "c", CLAUDE_CODE_DISABLE_AUTO_MEMORY: "1", GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: "core.longpaths", GIT_CONFIG_VALUE_0: "true" });
+	test("model references split into provider, model, and variant", () => {
+		assert.deepEqual(parseModel("opencode-go/deepseek-v4.1-flash"), { providerID: "opencode-go", id: "deepseek-v4.1-flash", variant: "default" });
+		assert.deepEqual(parseModel("anthropic/claude-sonnet-5-5#high"), { providerID: "anthropic", id: "claude-sonnet-5-5", variant: "high" });
+		assert.throws(() => parseModel("opus"), /provider\/model/);
 	});
 });
 
@@ -220,7 +199,7 @@ describe("task checks", () => {
 		assert.match(res.evidence, /escapes/);
 	});
 
-	test("grading summary matches skill-creator's schema", () => {
+	test("grading summary keeps the historical schema", () => {
 		const g = buildGrading([{ text: "a", passed: true, evidence: "" }, { text: "b", passed: false, evidence: "" }], {});
 		assert.deepEqual(g.summary, { passed: 1, failed: 1, total: 2, pass_rate: 0.5 });
 	});
@@ -237,11 +216,14 @@ describe("paths", () => {
 		assert.equal(resolveInside(tmp, "a/b"), path.join(tmp, "a", "b"));
 	});
 
-	test("finds a CLAUDE.md above a results folder", () => {
+	test("finds instruction files above a results folder", () => {
 		const parent = path.join(tmp, "parent");
 		mkdirSync(path.join(parent, "child"), { recursive: true });
+		writeFileSync(path.join(parent, "AGENTS.md"), "# x");
 		writeFileSync(path.join(parent, "CLAUDE.md"), "# x");
-		assert.ok(ancestorMemoryFiles(path.join(parent, "child")).includes(path.join(parent, "CLAUDE.md")));
+		const found = ancestorMemoryFiles(path.join(parent, "child"));
+		assert.ok(found.includes(path.join(parent, "AGENTS.md")));
+		assert.ok(found.includes(path.join(parent, "CLAUDE.md")));
 	});
 
 	test("evidence redaction covers drive-letter case and JSON escaping", () => {
@@ -285,6 +267,30 @@ describe("trial status", () => {
 	});
 });
 
+describe("aggregate", () => {
+	test("stats reports mean and stddev", () => {
+		assert.deepEqual(stats([1, 2, 3]), { mean: 2, stddev: 1, min: 1, max: 3 });
+	});
+	test("harness summary counts statuses, skills, and tokens per setup", () => {
+		const runs = [
+			{ config: "with_skill", status: "ok", pass_rate: 1, target_skill: "vide", target_skill_loaded: true, tokens: { total_tokens: 100, output_tokens: 10 }, wall_seconds: 2, cost_usd: 0.1 },
+			{ config: "without_skill", status: "ok", pass_rate: 0, target_skill: null, tokens: { total_tokens: 50, output_tokens: 5 }, wall_seconds: 1, cost_usd: 0.05 },
+		];
+		const summary = harnessSummary(runs);
+		assert.equal(summary.with_skill.trials, 1);
+		assert.equal(summary.with_skill.target_skill_loaded, "1/1");
+		assert.equal(summary.without_skill.pass_rate.mean, 0);
+	});
+	test("benchmark keeps the delta and metadata", () => {
+		const runs = [{ config: "with_skill", model: "m", eval: "e", run: "run-1", pass_rate: 1, tokens: { total_tokens: 10 }, wall_seconds: 1, cost_usd: 0 }];
+		const harness = harnessSummary(runs);
+		const benchmark = buildBenchmark({ runs, harness, judge: null, skillName: "vide", skillPath: "p" });
+		assert.equal(benchmark.metadata.executor_model, "m");
+		assert.equal(benchmark.metadata.skill_name, "vide");
+		assert.equal(benchmark.delta.tokens, 10);
+	});
+});
+
 describe("blind judge", () => {
 	test("labels follow the coin flip", () => {
 		const w = { id: "with" };
@@ -299,6 +305,19 @@ describe("blind judge", () => {
 
 	test("template placeholders are filled", () => {
 		assert.equal(fillTemplate("{{A}} and {{B}} and {{C}}", { A: "1", B: "$&" }), "1 and $& and {{C}}");
+	});
+
+	test("the judge prompt carries the JSON schema", () => {
+		const instruction = judgeInstruction();
+		assert.match(instruction, /Reply with only one JSON object/);
+		assert.match(instruction, /"winner"/);
+	});
+
+	test("the judge verdict is parsed from plain or fenced JSON", () => {
+		const verdict = { A: { overall_score: 8 }, B: { overall_score: 6 }, winner: "A", reasoning: "better" };
+		assert.deepEqual(parseJudgeVerdict(JSON.stringify(verdict)), verdict);
+		assert.deepEqual(parseJudgeVerdict("```json\n" + JSON.stringify(verdict) + "\n```"), verdict);
+		assert.throws(() => parseJudgeVerdict("not json"), /no JSON/);
 	});
 
 	describe("judge facts in the prompt", () => {
@@ -345,5 +364,31 @@ describe("blind judge", () => {
 		assert.deepEqual(s.evals["eval-1"].mean_score, { with_skill: 7.5, without_skill: 6.5 });
 		assert.equal(s.totals.judged, 2);
 		assert.equal(s.totals.pairs, 3);
+	});
+});
+
+describe("trigger evaluation", () => {
+	test("replaces the description in SKILL.md frontmatter", () => {
+		const before = "---\nname: vide\ndescription: old\n---\n\nbody\n";
+		assert.match(replaceDescription(before, "new words"), /description: \|\n  new words/);
+		assert.match(replaceDescription(before, "new words"), /body/);
+	});
+
+	test("counts a skill load before an edit", () => {
+		const skill = { type: "tool_use", part: { tool: "skill", state: { status: "completed", input: { id: "vide" } } } };
+		const edit = { type: "tool_use", part: { tool: "edit", state: { status: "completed", input: {} } } };
+		const read = { type: "tool_use", part: { tool: "read", state: { status: "completed", input: { path: "/p/skills/vide/SKILL.md" } } } };
+		assert.equal(triggeredBeforeEdit([skill, edit], "vide"), true);
+		assert.equal(triggeredBeforeEdit([edit, skill], "vide"), false);
+		assert.equal(triggeredBeforeEdit([read], "vide"), true);
+	});
+
+	test("splits queries deterministically into train and test", () => {
+		const queries = Array.from({ length: 10 }, (_, i) => ({ query: `q${i}`, should_trigger: true }));
+		const a = splitQueries(queries, 0.4, 42);
+		const b = splitQueries(queries, 0.4, 42);
+		assert.deepEqual(a, b);
+		assert.equal(a.train.length + a.test.length, 10);
+		assert.equal(a.test.length, 4);
 	});
 });

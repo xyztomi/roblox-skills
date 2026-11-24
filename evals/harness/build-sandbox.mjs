@@ -63,7 +63,7 @@ async function main() {
 	if (isInside(REPO_ROOT, dest)) throw new Error("build the sandbox outside the repository");
 	const memory = ancestorMemoryFiles(path.dirname(dest));
 	if (memory.length > 0) {
-		throw new Error(`a CLAUDE.md above ${dest} would load into every trial: ${memory.join(", ")}`);
+		throw new Error(`an instruction file above ${dest} would load into every trial: ${memory.join(", ")}`);
 	}
 	if (existsSync(dest) && readdirSync(dest).length > 0) {
 		if (!flags.force) throw new Error(`${dest} is not empty (pass --force to replace it)`);

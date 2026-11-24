@@ -1,5 +1,5 @@
-// Parses the stream-json transcript that `claude -p --output-format stream-json --verbose`
-// writes: one JSON event per line.
+// Parses OpenCode's `run --format json` event stream and the session context the
+// API returns. One JSON object per line; tool_use events carry the full tool state.
 
 export function parseEvents(text) {
 	const events = [];
@@ -15,62 +15,70 @@ export function parseEvents(text) {
 	return events;
 }
 
-export function findInit(events) {
-	return events.find((e) => e.type === "system" && e.subtype === "init") ?? null;
+export function findSessionID(events) {
+	return events.find((e) => typeof e.sessionID === "string")?.sessionID ?? null;
 }
 
-export function findResult(events) {
-	for (let i = events.length - 1; i >= 0; i--) {
-		if (events[i].type === "result") return events[i];
-	}
-	return null;
+export function findError(events) {
+	return events.find((e) => e.type === "error")?.error ?? null;
 }
 
-// The parts of the init event that show what the session loaded.
-export function summarizeInit(init) {
-	if (!init) return null;
-	return {
-		claude_code_version: init.claude_code_version ?? null,
-		model: init.model ?? null,
-		cwd: init.cwd ?? null,
-		permissionMode: init.permissionMode ?? null,
-		plugins: (init.plugins ?? []).map((p) => ({
-			name: p.name,
-			source: p.source ?? null,
-			path: p.path ?? null,
-		})),
-		skills: init.skills ?? [],
-		agents: init.agents ?? [],
-		mcp_servers: (init.mcp_servers ?? []).map((m) => ({ name: m.name, source: m.source ?? null })),
-		tool_count: (init.tools ?? []).length,
-		tools: (init.tools ?? []).filter((t) => !t.startsWith("mcp__")),
-	};
-}
-
-function toolUses(events) {
+export function toolUses(events) {
 	const uses = [];
 	for (const e of events) {
-		if (e.type !== "assistant") continue;
-		for (const block of e.message?.content ?? []) {
-			if (block.type === "tool_use") {
-				uses.push({ name: block.name, input: block.input ?? {}, parent: e.parent_tool_use_id ?? null });
-			}
-		}
+		if (e.type !== "tool_use") continue;
+		const part = e.part ?? {};
+		uses.push({
+			name: part.tool ?? "",
+			input: part.state?.input ?? {},
+			status: part.state?.status ?? null,
+			output: typeof part.state?.output === "string" ? part.state.output : "",
+			error: typeof part.state?.error === "string" ? part.state.error : "",
+		});
 	}
 	return uses;
 }
 
-export function skillsLoaded(events) {
-	return toolUses(events)
-		.filter((u) => u.name === "Skill" && typeof u.input.skill === "string")
-		.map((u) => u.input.skill);
+export function skillsFromContext(messages) {
+	const loaded = new Set();
+	let start = 0;
+	for (let index = 0; index < messages.length; index += 1) {
+		if (messages[index]?.type === "compaction") start = index + 1;
+	}
+	for (const message of messages.slice(start)) {
+		if (message?.type === "skill" && typeof message.skill === "string") loaded.add(message.skill);
+		if (message?.type === "user" && Array.isArray(message.skills)) {
+			for (const skill of message.skills) if (typeof skill?.id === "string") loaded.add(skill.id);
+		}
+		if (message?.type === "assistant" && Array.isArray(message.content)) {
+			for (const part of message.content) {
+				if (part?.type === "tool" && part.name === "skill" && part.state?.status === "completed") {
+					const id = part.state.input?.id;
+					if (typeof id === "string") loaded.add(id);
+				}
+			}
+		}
+	}
+	return loaded;
 }
 
-// Reading a SKILL.md with the Read tool also loads a skill's instructions.
+export function skillsLoaded(events, context = null) {
+	const loaded = new Set(
+		toolUses(events)
+			.filter((u) => u.name === "skill" && u.status === "completed" && typeof u.input.id === "string")
+			.map((u) => u.input.id),
+	);
+	if (Array.isArray(context)) {
+		for (const skill of skillsFromContext(context)) loaded.add(skill);
+	}
+	return [...loaded];
+}
+
+// Reading a SKILL.md with the read tool also loads a skill's instructions.
 export function skillFileReads(events) {
 	return toolUses(events)
-		.filter((u) => u.name === "Read" && /SKILL\.md$/i.test(String(u.input.file_path ?? "")))
-		.map((u) => u.input.file_path);
+		.filter((u) => u.name === "read" && /SKILL\.md$/i.test(String(u.input.path ?? "")))
+		.map((u) => u.input.path);
 }
 
 export function toolCallCounts(events) {
@@ -79,23 +87,30 @@ export function toolCallCounts(events) {
 	return counts;
 }
 
-// Hook runs, from the events that --include-hook-events adds.
-export function hooksFired(events) {
-	const byId = new Map();
-	for (const e of events) {
-		if (e.type !== "system" || !String(e.subtype ?? "").startsWith("hook_")) continue;
-		const entry = byId.get(e.hook_id) ?? { hook_name: e.hook_name, hook_event: e.hook_event };
-		if (e.subtype === "hook_response") {
-			entry.exit_code = e.exit_code ?? null;
-			entry.output = String(e.output ?? "").slice(0, 300);
+// Evidence that the plugin's hooks ran, derived from the events and the session's
+// messages. OpenCode has no hook event stream, so each hook's own effect is the proof.
+export function hooksFired(events, context = null) {
+	const found = [];
+	for (const use of toolUses(events)) {
+		if (use.status === "error" && /with the skill tool/i.test(use.error)) {
+			found.push({ hook_name: "skill-gate", evidence: use.error.slice(0, 300) });
 		}
-		byId.set(e.hook_id, entry);
+		if (/Luau convention check/i.test(use.output)) {
+			found.push({ hook_name: "after-edit", evidence: use.output.slice(0, 300) });
+		}
 	}
-	return [...byId.values()];
+	if (Array.isArray(context)) {
+		for (const message of context) {
+			if (message?.type === "synthetic" && /Luau checks before this turn ends/i.test(String(message.text ?? ""))) {
+				found.push({ hook_name: "verify-gate", evidence: String(message.text).slice(0, 300) });
+			}
+		}
+	}
+	return found;
 }
 
-// Totals across every model the session used (the main model plus any helper calls).
-export function usageTotals(result) {
+// Totals across every model step the session ran.
+export function usageTotals(events) {
 	const totals = {
 		input_tokens: 0,
 		output_tokens: 0,
@@ -103,44 +118,54 @@ export function usageTotals(result) {
 		cache_creation_input_tokens: 0,
 		total_tokens: 0,
 	};
-	if (!result) return totals;
-	const models = result.modelUsage ?? {};
-	if (Object.keys(models).length > 0) {
-		for (const m of Object.values(models)) {
-			totals.input_tokens += m.inputTokens ?? 0;
-			totals.output_tokens += m.outputTokens ?? 0;
-			totals.cache_read_input_tokens += m.cacheReadInputTokens ?? 0;
-			totals.cache_creation_input_tokens += m.cacheCreationInputTokens ?? 0;
-		}
-	} else if (result.usage) {
-		totals.input_tokens = result.usage.input_tokens ?? 0;
-		totals.output_tokens = result.usage.output_tokens ?? 0;
-		totals.cache_read_input_tokens = result.usage.cache_read_input_tokens ?? 0;
-		totals.cache_creation_input_tokens = result.usage.cache_creation_input_tokens ?? 0;
+	let cost = 0;
+	for (const e of events) {
+		if (e.type !== "step_finish") continue;
+		const t = e.part?.tokens ?? {};
+		const cache = t.cache ?? {};
+		totals.input_tokens += t.input ?? 0;
+		totals.output_tokens += (t.output ?? 0) + (t.reasoning ?? 0);
+		totals.cache_read_input_tokens += cache.read ?? 0;
+		totals.cache_creation_input_tokens += cache.write ?? 0;
+		cost += e.part?.cost ?? 0;
 	}
 	totals.total_tokens =
 		totals.input_tokens +
 		totals.output_tokens +
 		totals.cache_read_input_tokens +
 		totals.cache_creation_input_tokens;
-	return totals;
+	return { ...totals, cost_usd: Math.round(cost * 10000) / 10000 };
 }
 
-export function summarizeResult(result) {
-	if (!result) return null;
+export function summarizeResult(events) {
+	const error = findError(events);
+	const steps = events.filter((e) => e.type === "step_start").length;
+	const usage = usageTotals(events);
+	const empty = steps === 0 && finalText(events).trim() === "";
 	return {
-		subtype: result.subtype ?? null,
-		is_error: result.is_error ?? null,
-		terminal_reason: result.terminal_reason ?? null,
-		num_turns: result.num_turns ?? null,
-		duration_ms: result.duration_ms ?? null,
-		duration_api_ms: result.duration_api_ms ?? null,
-		total_cost_usd: result.total_cost_usd ?? null,
-		permission_denials: (result.permission_denials ?? []).map((d) => d.tool_name ?? d),
-		models: Object.keys(result.modelUsage ?? {}),
+		is_error: error !== null || empty,
+		error: error ? (error.message ?? error.type ?? "error") : empty ? "the session produced no steps or text" : null,
+		num_turns: steps,
+		cost_usd: usage.cost_usd,
 	};
 }
 
-export function finalText(result) {
-	return typeof result?.result === "string" ? result.result : "";
+// The last text part is the assistant's final answer.
+export function finalText(events) {
+	let text = "";
+	for (const e of events) {
+		if (e.type === "text" && typeof e.part?.text === "string") text = e.part.text;
+	}
+	return text;
+}
+
+// A short summary of what the session loaded, for metrics.json.
+export function summarizeSession({ sessionID, model, config, context = null, skills = [] }) {
+	return {
+		sessionID,
+		model,
+		plugins: (config?.plugins ?? []).map((plugin) => ({ name: plugin, source: "config" })),
+		skills,
+		messages: Array.isArray(context) ? context.length : null,
+	};
 }

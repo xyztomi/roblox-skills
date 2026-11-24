@@ -6,6 +6,9 @@
     "node": ">=22"
   },
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "reload": "node tools/reload.mjs",
+    "pack:plugins": "node tools/pack-plugins.mjs",
+    "check:plugin-package": "node tools/check-plugin-package.mjs"
   }
 }

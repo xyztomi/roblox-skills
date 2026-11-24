@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-// Runs eval trials: each trial is a headless `claude -p` session in its own copy of
-// the sandbox, under one setup.
+// Runs eval trials: each trial is a headless OpenCode session with a private
+// config directory and server, in its own copy of the sandbox.
 //
 //   node evals/harness/run-trials.mjs --task <file>[,<file>...] --sandbox <dir> --out <dir>
+//     --model <provider/model[#variant]>
 //     [--setup with-skill|baseline|both] [--runs 3] [--concurrency 5]
-//     [--plugin-dir plugins/roblox-dev] [--model opus] [--effort <level>]
-//     [--timeout-minutes <n>] [--max-budget-usd <n>] [--disable-plugins a@m,b@m] [--keep-projects]
+//     [--plugin-dir plugins/roblox-dev] [--timeout-minutes <n>] [--keep-projects]
 //
-// Layout (what skill-creator's aggregate_benchmark.py reads):
+// Layout:
 //   <out>/eval-<id>-<name>/eval_metadata.json
 //   <out>/eval-<id>-<name>/<with_skill|without_skill>/run-<n>/
 //     run.json  grading.json  timing.json  metrics.json  transcript.jsonl  stderr.log
@@ -19,19 +19,18 @@ import { fileURLToPath } from "node:url";
 
 import { intFlag, listFlag, parseArgs } from "./lib/args.mjs";
 import { buildGrading, LUAU, runAutoChecks, runTaskChecks } from "./lib/checks.mjs";
-import { runClaude, trialArgs } from "./lib/claude.mjs";
-import { checkIsolation, CONFIG_DIR, readPluginName, SETUPS } from "./lib/isolation.mjs";
+import { checkIsolation, CONFIG_DIR, SETUPS } from "./lib/isolation.mjs";
+import { DEFAULT_MODEL, pluginSkills, readPluginName, readSessionContext, runOpencode, writeTrialConfig } from "./lib/opencode.mjs";
 import { runPool } from "./lib/pool.mjs";
 import {
-	findInit,
-	findResult,
 	finalText,
+	findSessionID,
 	hooksFired,
 	parseEvents,
 	skillFileReads,
 	skillsLoaded,
-	summarizeInit,
 	summarizeResult,
+	summarizeSession,
 	toolCallCounts,
 	usageTotals,
 } from "./lib/stream.mjs";
@@ -77,12 +76,14 @@ async function runTrial({ task, setup, runNumber, opts }) {
 	const evalDir = path.join(opts.out, evalDirName(task));
 	const trialDir = path.join(evalDir, CONFIG_DIR[setup], `run-${runNumber}`);
 	const projectDir = path.join(trialDir, "project");
+	const configDir = path.join(trialDir, "config");
 	const label = `${evalDirName(task)} ${setup} run-${runNumber}`;
 	mkdirSync(trialDir, { recursive: true });
 
 	const record = { task: task.name, eval_id: task.id, setup, run: runNumber, status: "failed", error: null };
 	let outcome = { exitCode: null, spawnError: null, timedOut: false, wallMs: 0, startedAt: null, endedAt: null };
 	let events = [];
+	let config = null;
 	try {
 		copySandbox(opts.sandbox, projectDir);
 		applySetupFiles(task, projectDir);
@@ -92,36 +93,52 @@ async function runTrial({ task, setup, runNumber, opts }) {
 			pluginCopy = path.join(trialDir, "plugin", path.basename(opts.pluginDir));
 			cpSync(opts.pluginDir, pluginCopy, { recursive: true });
 		}
+		config = writeTrialConfig(configDir, { pluginDir: pluginCopy });
 		process.stdout.write(`start  ${label}\n`);
-		outcome = await runClaude({
-			args: trialArgs({
-				model: opts.model,
-				pluginDir: pluginCopy,
-				effort: opts.effort,
-				maxBudgetUsd: opts.maxBudgetUsd,
-				extraDisabledPlugins: opts.disablePlugins,
-			}),
+		outcome = await runOpencode({
 			prompt: task.prompt,
 			cwd: projectDir,
+			configDir,
+			model: opts.model,
 			transcriptPath: path.join(trialDir, "transcript.jsonl"),
 			stderrPath: path.join(trialDir, "stderr.log"),
 			timeoutMs: (opts.timeoutMinutes ?? task.timeout_minutes) * 60_000,
 		});
 		events = parseEvents(readFileSync(path.join(trialDir, "transcript.jsonl"), "utf8"));
 
-		const init = summarizeInit(findInit(events));
-		const result = findResult(events);
-		const hooks = hooksFired(events);
-		const isolation = checkIsolation(init, { setup, expectedPlugin: opts.pluginName, hooks });
-		const usage = usageTotals(result);
-		const loaded = skillsLoaded(events);
+		const sessionID = findSessionID(events);
+		let context = null;
+		let contextError = null;
+		if (sessionID) {
+			try {
+				context = readSessionContext({ sessionID, configDir, cwd: projectDir });
+			} catch (err) {
+				contextError = err.message;
+			}
+		} else {
+			contextError = "no session id in the transcript";
+		}
+
+		const result = summarizeResult(events);
+		const hooks = hooksFired(events, context);
+		const isolation = checkIsolation({
+			config,
+			setup,
+			pluginDir: pluginCopy,
+			pluginSkills: opts.pluginSkills,
+			events,
+			context,
+		});
+		const usage = usageTotals(events);
+		const loaded = skillsLoaded(events, context);
 		const status = trialStatus({ outcome, result, isolation });
+		const session = summarizeSession({ sessionID, model: opts.model, config, context, skills: loaded });
 
 		const { changed, deleted } = changedFiles(projectDir, base);
 		mkdirSync(path.join(trialDir, "outputs"), { recursive: true });
 		writeFileSync(path.join(trialDir, "outputs", "changes.diff"), diffAgainst(projectDir, base));
 		saveChangedFiles(projectDir, changed, path.join(trialDir, "outputs", "files"));
-		writeFileSync(path.join(trialDir, "outputs", "final-message.md"), finalText(result));
+		writeFileSync(path.join(trialDir, "outputs", "final-message.md"), finalText(events));
 
 		const changedLuau = changed.filter((f) => LUAU.test(f));
 		const expectations = [
@@ -135,9 +152,9 @@ async function runTrial({ task, setup, runNumber, opts }) {
 			{
 				tool_calls: toolCalls,
 				total_tool_calls: Object.values(toolCalls).reduce((a, b) => a + b, 0),
-				total_steps: result?.num_turns ?? 0,
+				total_steps: result.num_turns ?? 0,
 				errors_encountered: status === "ok" ? 0 : 1,
-				output_chars: finalText(result).length,
+				output_chars: finalText(events).length,
 			},
 			{ needs_review: status === "ok" ? [] : [`trial status: ${status}`] },
 		);
@@ -151,34 +168,38 @@ async function runTrial({ task, setup, runNumber, opts }) {
 			executor_duration_seconds: Math.round(outcome.wallMs / 100) / 10,
 		});
 		writeJson(path.join(trialDir, "metrics.json"), {
-			init,
+			session,
+			config,
 			isolation,
 			skills_loaded: loaded,
 			skill_file_reads: skillFileReads(events),
 			hooks_fired: hooks,
 			tool_calls: toolCalls,
 			usage,
-			result: summarizeResult(result),
+			result,
+			context_error: contextError,
 		});
 		Object.assign(record, {
 			status,
 			isolation_ok: isolation.ok,
 			isolation_problems: isolation.problems,
-			model: init?.model ?? null,
+			model: opts.model,
+			session_id: sessionID,
 			skills_loaded: loaded,
-			target_skill: task.skill ? `${opts.pluginName}:${task.skill}` : null,
-			target_skill_loaded: task.skill ? loaded.includes(`${opts.pluginName}:${task.skill}`) : null,
+			target_skill: task.skill ?? null,
+			target_skill_loaded: task.skill ? loaded.includes(task.skill) : null,
 			hooks_fired: [...new Set(hooks.map((h) => h.hook_name))],
 			changed_files: changed,
 			deleted_files: deleted,
 			pass_rate: grading.summary.pass_rate,
 			tokens: usage,
-			cost_usd: result?.total_cost_usd ?? null,
-			num_turns: result?.num_turns ?? null,
+			cost_usd: result.cost_usd,
+			num_turns: result.num_turns,
 			wall_seconds: Math.round(outcome.wallMs / 100) / 10,
 			exit_code: outcome.exitCode,
 			timed_out: outcome.timedOut,
 			spawn_error: outcome.spawnError,
+			context_error: contextError,
 			base_commit: base,
 		});
 	} catch (err) {
@@ -208,30 +229,31 @@ async function main() {
 	const { flags } = parseArgs(process.argv.slice(2), { booleans: ["keep-projects"] });
 	const taskFiles = listFlag(flags.task);
 	if (taskFiles.length === 0 || !flags.sandbox || !flags.out) {
-		console.error("usage: node evals/harness/run-trials.mjs --task <file>[,<file>] --sandbox <dir> --out <dir> [--setup both] [--runs 3] [--concurrency 5]");
+		console.error("usage: node evals/harness/run-trials.mjs --task <file>[,<file>] --sandbox <dir> --out <dir> --model <provider/model> [--setup both] [--runs 3] [--concurrency 5]");
 		process.exit(2);
 	}
 	const setupFlag = flags.setup ?? "both";
 	const setups = setupFlag === "both" ? SETUPS : [setupFlag];
 	if (!setups.every((s) => SETUPS.includes(s))) throw new Error(`--setup must be with-skill, baseline, or both`);
 
+	const model = flags.model ?? DEFAULT_MODEL;
+	if (!model) throw new Error("--model is required (or set EVAL_MODEL), for example opencode-go/deepseek-v4.1-flash");
+
 	const opts = {
 		sandbox: path.resolve(flags.sandbox),
 		out: path.resolve(flags.out),
 		pluginDir: path.resolve(flags["plugin-dir"] ?? DEFAULT_PLUGIN),
-		model: flags.model ?? "opus",
-		effort: flags.effort ?? null,
+		model,
 		timeoutMinutes: flags["timeout-minutes"] ? Number(flags["timeout-minutes"]) : null,
-		maxBudgetUsd: flags["max-budget-usd"] ? Number(flags["max-budget-usd"]) : null,
-		disablePlugins: listFlag(flags["disable-plugins"]),
 		keepProjects: !!flags["keep-projects"],
 	};
 	const runs = intFlag(flags.runs, "runs", { max: 50, fallback: 3 });
 	const concurrency = intFlag(flags.concurrency, "concurrency", { max: 20, fallback: 5 });
 	if (!existsSync(path.join(opts.sandbox, ".git"))) throw new Error(`${opts.sandbox} is not a sandbox (run build-sandbox.mjs first)`);
 	const memory = ancestorMemoryFiles(opts.out);
-	if (memory.length > 0) throw new Error(`a CLAUDE.md above ${opts.out} would load into every trial: ${memory.join(", ")}`);
+	if (memory.length > 0) throw new Error(`an instruction file above ${opts.out} would load into every trial: ${memory.join(", ")}`);
 	opts.pluginName = setups.includes("with-skill") ? readPluginName(opts.pluginDir) : null;
+	opts.pluginSkills = setups.includes("with-skill") ? pluginSkills(opts.pluginDir) : [];
 
 	const tasks = taskFiles.map(loadTask);
 	const jobs = [];

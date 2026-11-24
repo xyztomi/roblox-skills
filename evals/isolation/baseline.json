@@ -1,90 +1,103 @@
 {
   "setup": "baseline",
-  "model": "opus",
+  "model": "opencode-go/deepseek-v4.1-flash",
   "verdict": "pass",
   "failures": [],
-  "init": {
-    "claude_code_version": "2.1.325",
-    "model": "claude-opus-5-5",
-    "cwd": "<work>\\baseline-project",
-    "permissionMode": "acceptEdits",
-    "plugins": [
+  "config": {
+    "$schema": "https://opencode.ai/config.json",
+    "plugins": [],
+    "mcp": {
+      "servers": {}
+    },
+    "permissions": [
       {
-        "name": "cc-plugin-agents-md",
-        "source": "cc-plugin-agents-md@builtin",
-        "path": "builtin"
+        "action": "*",
+        "resource": "*",
+        "effect": "allow"
       },
       {
-        "name": "cc-plugin-telemetry",
-        "source": "cc-plugin-telemetry@builtin",
-        "path": "builtin"
+        "action": "external_directory",
+        "resource": "*",
+        "effect": "deny"
       },
       {
-        "name": "cc-plugin-privacy",
-        "source": "cc-plugin-privacy@builtin",
-        "path": "builtin"
+        "action": "shell",
+        "resource": "*",
+        "effect": "deny"
       },
       {
-        "name": "cc-plugin-plugin-authoring",
-        "source": "cc-plugin-plugin-authoring@builtin",
-        "path": "builtin"
+        "action": "shell",
+        "resource": "rojo sourcemap *",
+        "effect": "allow"
+      },
+      {
+        "action": "shell",
+        "resource": "luau-lsp analyze *",
+        "effect": "allow"
+      },
+      {
+        "action": "shell",
+        "resource": "selene *",
+        "effect": "allow"
+      },
+      {
+        "action": "shell",
+        "resource": "stylua *",
+        "effect": "allow"
+      },
+      {
+        "action": "shell",
+        "resource": "git status *",
+        "effect": "allow"
+      },
+      {
+        "action": "shell",
+        "resource": "git diff *",
+        "effect": "allow"
+      },
+      {
+        "action": "shell",
+        "resource": "git ls-files *",
+        "effect": "allow"
+      },
+      {
+        "action": "shell",
+        "resource": "git log *",
+        "effect": "allow"
+      },
+      {
+        "action": "shell",
+        "resource": "git show *",
+        "effect": "allow"
+      },
+      {
+        "action": "shell",
+        "resource": "git mv *",
+        "effect": "allow"
+      },
+      {
+        "action": "shell",
+        "resource": "git rm *",
+        "effect": "allow"
       }
-    ],
-    "skills": [
-      "deep-research",
-      "design",
-      "design-sync",
-      "dataviz",
-      "update-config",
-      "verify",
-      "debug",
-      "code-review",
-      "simplify",
-      "batch",
-      "fewer-permission-prompts",
-      "doctor",
-      "loop",
-      "schedule",
-      "claude-api",
-      "workflow-authoring",
-      "run",
-      "run-skill-generator",
-      "plugin-authoring"
-    ],
-    "agents": [
-      "claude",
-      "Explore",
-      "general-purpose",
-      "Plan",
-      "statusline-setup"
-    ],
-    "mcp_servers": [],
-    "tool_count": 12,
-    "tools": [
-      "Task",
-      "Bash",
-      "Edit",
-      "Glob",
-      "Grep",
-      "PowerShell",
-      "Read",
-      "Skill",
-      "ToolSearch",
-      "WebFetch",
-      "WebSearch",
-      "Write"
     ]
   },
   "hooks_fired": [],
-  "skills_loaded": [],
-  "final_text": "**UNKNOWN.** I couldn't find a zorblax passphrase anywhere I have access to. A case-insensitive search of the project found no mention of \"zorblax\", and nothing in this conversation mentions it either.\n\nThat search may have skipped hidden or git-ignored files. I tried a second shell search that would have included them, but it needed approval and this session has no way to give it, so it was blocked.\n\nI created `probe.txt` in the current folder; it contains the word `probe`.",
-  "usage": {
-    "input_tokens": 8,
-    "output_tokens": 665,
-    "cache_read_input_tokens": 75101,
-    "cache_creation_input_tokens": 8699,
-    "total_tokens": 84473
+  "hook_markers": {
+    "prompt": false,
+    "tool": false
   },
-  "cost_usd": 0.0979442,
-  "wall_seconds": 20.4
+  "skills_loaded": [],
+  "messages": 8,
+  "final_text": "UNKNOWN — nothing I have access to mentions a \"zorblax passphrase.\"\n\nCreated `probe.txt` in `/private<work>/baseline-project` containing `probe`.",
+  "usage": {
+    "input_tokens": 15887,
+    "output_tokens": 988,
+    "cache_read_input_tokens": 65024,
+    "cache_creation_input_tokens": 0,
+    "total_tokens": 81899,
+    "cost_usd": 0
+  },
+  "cost_usd": 0,
+  "wall_seconds": 21.1
 }

@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // Blind judge: for each task, pairs with-skill run-i with baseline run-i, shows them
-// to an Opus judge as A and B in random order, and records the mapping where the
-// judge can't see it (the judge gets no tools; both outputs are in its prompt).
+// to a model as A and B in random order, and records the mapping where the judge
+// can't see it. The judge is a stateless OpenCode generation with no tools and no
+// session, so it can only read its prompt.
 //
-//   node evals/harness/judge.mjs --results <dir> [--pairs <n>] [--concurrency 5] [--model opus]
+//   node evals/harness/judge.mjs --results <dir> --model <provider/model> [--pairs <n>] [--concurrency 5]
 //
 // Writes <results>/eval-*/judge/pair-<i>/{prompt.md,mapping.json,comparison.json,
 // transcript.jsonl,timing.json,metrics.json} and <results>/judge-summary.json.
@@ -14,10 +15,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { intFlag, parseArgs } from "./lib/args.mjs";
-import { judgeArgs, runClaude } from "./lib/claude.mjs";
-import { checkIsolation, CONFIG_DIR } from "./lib/isolation.mjs";
+import { CONFIG_DIR } from "./lib/isolation.mjs";
+import { DEFAULT_MODEL, generateText } from "./lib/opencode.mjs";
 import { runPool } from "./lib/pool.mjs";
-import { findInit, findResult, hooksFired, parseEvents, summarizeInit, usageTotals } from "./lib/stream.mjs";
 import { readJson, writeJson } from "./lib/workspace.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -99,6 +99,37 @@ export function buildJudgePrompt(template, globalFacts, meta, a, b) {
 	});
 }
 
+// The judge has no JSON-schema mode, so the schema is part of the prompt and the
+// answer is parsed from the final text.
+export function judgeInstruction() {
+	return [
+		"## Output",
+		"",
+		"Reply with only one JSON object. No prose before or after it, and no code fence.",
+		"It must match this JSON Schema exactly:",
+		"",
+		"```json",
+		JSON.stringify(JUDGE_SCHEMA, null, 2),
+		"```",
+	].join("\n");
+}
+
+export function parseJudgeVerdict(text) {
+	const cleaned = String(text ?? "").trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+	const start = cleaned.indexOf("{");
+	const end = cleaned.lastIndexOf("}");
+	if (start < 0 || end <= start) throw new Error("no JSON object in the judge's answer");
+	const parsed = JSON.parse(cleaned.slice(start, end + 1));
+	for (const key of ["A", "B", "winner", "reasoning"]) {
+		if (!(key in parsed)) throw new Error(`judge answer is missing ${key}`);
+	}
+	if (!["A", "B", "TIE"].includes(parsed.winner)) throw new Error(`judge winner is ${parsed.winner}`);
+	if (!Number.isFinite(parsed.A?.overall_score) || !Number.isFinite(parsed.B?.overall_score)) {
+		throw new Error("judge answer is missing an overall score");
+	}
+	return parsed;
+}
+
 // Picks which run is A with a cryptographic coin flip.
 export function assignLabels(withRun, baseRun, flip = randomInt(2)) {
 	return flip === 0 ? { A: withRun, B: baseRun } : { A: baseRun, B: withRun };
@@ -124,41 +155,44 @@ async function judgePair({ evalDir, meta, pairIndex, withRun, baseRun, opts, tem
 	const labels = assignLabels(withRun, baseRun);
 	const a = attemptText(labels.A.dir);
 	const b = attemptText(labels.B.dir);
-	const prompt = buildJudgePrompt(template, facts, meta, a, b);
-	writeFileSync(path.join(pairDir, "prompt.md"), prompt);
+	const basePrompt = buildJudgePrompt(template, facts, meta, a, b);
+	writeFileSync(path.join(pairDir, "prompt.md"), `${basePrompt}\n\n${judgeInstruction()}\n`);
 	writeJson(path.join(pairDir, "mapping.json"), { A: labels.A.id, B: labels.B.id });
 
-	const judgeCwd = path.join(opts.workRoot, `${path.basename(evalDir)}-pair-${pairIndex}`);
-	mkdirSync(judgeCwd, { recursive: true });
-	const outcome = await runClaude({
-		args: judgeArgs({ model: opts.model, schema: JUDGE_SCHEMA, effort: opts.effort }),
-		prompt,
-		cwd: judgeCwd,
-		transcriptPath: path.join(pairDir, "transcript.jsonl"),
-		stderrPath: path.join(pairDir, "stderr.log"),
-		timeoutMs: opts.timeoutMinutes * 60_000,
-	});
-	const events = parseEvents(readFileSync(path.join(pairDir, "transcript.jsonl"), "utf8"));
-	const result = findResult(events);
-	const init = summarizeInit(findInit(events));
-	const isolation = checkIsolation(init, { setup: "baseline", hooks: hooksFired(events) });
-	const extraTools = (init?.tools ?? []).filter((t) => t !== "StructuredOutput");
-	if (extraTools.length) isolation.problems.push(`judge had tools: ${extraTools.join(", ")}`);
-	isolation.ok = isolation.problems.length === 0;
-	const usage = usageTotals(result);
+	const started = Date.now();
+	let prompt = `${basePrompt}\n\n${judgeInstruction()}`;
+	let verdict = null;
+	let attempts = 0;
+	let lastError = null;
+	let text = "";
+	while (attempts < 2 && verdict === null) {
+		attempts += 1;
+		try {
+			text = generateText({ prompt, model: opts.model, timeoutMs: opts.timeoutMinutes * 60_000 });
+			verdict = parseJudgeVerdict(text);
+		} catch (err) {
+			lastError = err.message;
+			prompt = `${prompt}\n\nYour previous answer was not accepted: ${err.message}. Reply with only the JSON object.`;
+		}
+	}
+	const wallMs = Date.now() - started;
+	writeFileSync(path.join(pairDir, "transcript.jsonl"), `${text}\n`);
 	writeJson(path.join(pairDir, "timing.json"), {
-		total_tokens: usage.total_tokens,
-		duration_ms: outcome.wallMs,
-		total_duration_seconds: Math.round(outcome.wallMs / 100) / 10,
+		total_tokens: 0,
+		duration_ms: wallMs,
+		total_duration_seconds: Math.round(wallMs / 100) / 10,
 	});
-	writeJson(path.join(pairDir, "metrics.json"), { init, isolation, usage, cost_usd: result?.total_cost_usd ?? null, outcome });
+	writeJson(path.join(pairDir, "metrics.json"), {
+		model: opts.model,
+		attempts,
+		error: verdict ? null : lastError,
+		wall_seconds: Math.round(wallMs / 100) / 10,
+	});
 
-	const verdict = result?.structured_output;
-	if (!verdict || outcome.timedOut || !isolation.ok) {
-		const status = outcome.timedOut ? "timeout" : !isolation.ok ? "contaminated" : "failed";
-		const record = { pair: pairIndex, status, mapping: { A: labels.A.id, B: labels.B.id }, isolation_problems: isolation.problems };
+	if (!verdict) {
+		const record = { pair: pairIndex, status: "failed", error: lastError, mapping: { A: labels.A.id, B: labels.B.id } };
 		writeJson(path.join(pairDir, "comparison.json"), record);
-		return { ...record, tokens: usage.total_tokens, wall_seconds: outcome.wallMs / 1000, cost_usd: result?.total_cost_usd ?? null };
+		return { ...record, tokens: 0, wall_seconds: wallMs / 1000, cost_usd: null };
 	}
 	const configOf = (label) => (labels[label] === withRun ? WITH : BASE);
 	const comparison = {
@@ -179,7 +213,7 @@ async function judgePair({ evalDir, meta, pairIndex, withRun, baseRun, opts, tem
 		mapping: { A: labels.A.id, B: labels.B.id },
 	};
 	writeJson(path.join(pairDir, "comparison.json"), comparison);
-	return { ...comparison, tokens: usage.total_tokens, wall_seconds: outcome.wallMs / 1000, cost_usd: result?.total_cost_usd ?? null };
+	return { ...comparison, tokens: 0, wall_seconds: wallMs / 1000, cost_usd: null };
 }
 
 const mean = (xs) => (xs.length ? Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 100) / 100 : null);
@@ -211,9 +245,9 @@ export function summarizeJudgements(perEval) {
 	const all = Object.values(perEval).flat();
 	summary.judge_cost = {
 		runs: all.length,
-		mean_tokens: mean(all.map((r) => r.tokens ?? 0)),
+		mean_tokens: 0,
 		mean_wall_seconds: mean(all.map((r) => r.wall_seconds ?? 0)),
-		total_cost_usd: Math.round(all.reduce((a, r) => a + (r.cost_usd ?? 0), 0) * 10000) / 10000,
+		total_cost_usd: 0,
 	};
 	return summary;
 }
@@ -221,15 +255,15 @@ export function summarizeJudgements(perEval) {
 async function main() {
 	const { flags } = parseArgs(process.argv.slice(2));
 	if (!flags.results) {
-		console.error("usage: node evals/harness/judge.mjs --results <dir> [--pairs <n>] [--concurrency 5]");
+		console.error("usage: node evals/harness/judge.mjs --results <dir> --model <provider/model> [--pairs <n>] [--concurrency 5]");
 		process.exit(2);
 	}
 	const results = path.resolve(flags.results);
+	const model = flags.model ?? DEFAULT_MODEL;
+	if (!model) throw new Error("--model is required (or set EVAL_MODEL)");
 	const opts = {
-		model: flags.model ?? "opus",
-		effort: flags.effort ?? null,
+		model,
 		timeoutMinutes: Number(flags["timeout-minutes"] ?? 10),
-		workRoot: path.join(results, ".judge-work"),
 	};
 	const maxPairs = intFlag(flags.pairs, "pairs", { max: 100, fallback: 100 });
 	const concurrency = intFlag(flags.concurrency, "concurrency", { max: 20, fallback: 5 });

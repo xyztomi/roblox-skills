@@ -1,5 +1,8 @@
 # Pilot: code-comments and vide (2026-11-13)
 
+Historical: this pilot used the earlier Claude Code harness. The results are kept for comparison
+with the current OpenCode harness.
+
 The pilot ran the full method on two skills to measure real cost per trial before budgeting the
 other 11. Each skill has 4 tasks, run 3 times per setup. With-skill loads the whole `roblox-dev`
 plugin as shipped (skills plus hooks); baseline loads no Roblox plugin. Results are in

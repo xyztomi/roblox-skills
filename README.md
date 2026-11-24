@@ -42,6 +42,10 @@ still in `plugins/roblox-dev/hooks/` and share the same rules.
 (remotes, data saving, yields, architecture) and returns ranked findings. For general correctness,
 use `/code-review`.
 
+Matt Pocock's engineering skills work in OpenCode through the skills CLI. Install them once with
+`npx skills@latest add mattpocock/skills -a opencode`; OpenCode discovers them under
+`~/.agents/skills`. They are separate from this repo and are not reinstalled or modified here.
+
 The skills work with any Studio MCP. The setup below adds
 [Chrrxs/robloxstudio-mcp](https://github.com/Chrrxs/robloxstudio-mcp); Roblox's
 [built-in Studio MCP](https://create.roblox.com/docs/studio/mcp) is the option with nothing to
@@ -68,8 +72,9 @@ staging, and a GitHub release publishes them to production.
 
 `evals/` measures each skill against runs without it, with a blind judge. Twelve of the 13 skills
 beat the baseline and `game-architecture` comes out even; [`evals/RESULTS.md`](evals/RESULTS.md)
-has the numbers. The harness still runs its trials through `claude -p`, so it needs Claude Code
-installed; it is development tooling and does not ship with the plugin.
+has the numbers from the earlier harness. The current harness runs trials through the OpenCode CLI
+and the judge through OpenCode's stateless generation, so it needs OpenCode and a model, not Claude
+Code. It is development tooling and does not ship with the plugin.
 
 ## One-prompt setup
 
@@ -89,24 +94,38 @@ setup is a separate, optional step: ask for it when you're ready.
 
 ## Manual install
 
-The plugin, pinned to a release tag (use `main` to follow development):
+Install the plugins from the development branch:
 
 ```
-opencode plugin add 'github:Crusherfire-Media/roblox-skills#v0.2.0::path:plugins/roblox-dev'
-opencode plugin add 'github:Crusherfire-Media/roblox-skills#v0.2.0::path:plugins/pages'
+opencode plugin add 'github:Crusherfire-Media/roblox-skills#main::path:plugins/roblox-dev'
+opencode plugin add 'github:Crusherfire-Media/roblox-skills#main::path:plugins/pages'
 ```
 
-Until the v0.2.0 release is published, use `main` in place of `v0.2.0` in these commands.
+For a fixed copy, replace `main` with a published release tag. `opencode plugin update` moves a
+branch or range forward; an exact tag stays put. OpenCode caches packages by version.
 
-To upgrade, update the entries with `opencode plugin update`, or add them again with a newer tag.
-OpenCode caches packages by their installed version, so use the tag or a changed branch.
+Until this branch lands on `main`, use the absolute-path method below; the `#main` commands work
+after it lands.
 
 Install the reviewer subagent, which OpenCode does not load from a plugin package:
 
 ```
 mkdir -p ~/.config/opencode/agents
 curl -fsSL -o ~/.config/opencode/agents/reviewer.md \
-  https://raw.githubusercontent.com/Crusherfire-Media/roblox-skills/v0.2.0/plugins/roblox-dev/agents/reviewer.md
+  https://raw.githubusercontent.com/Crusherfire-Media/roblox-skills/main/plugins/roblox-dev/agents/reviewer.md
+```
+
+To use this checkout without installing it, add the absolute plugin folders to a game repo's
+`.opencode/opencode.json`:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugins": [
+    "/absolute/path/to/roblox-skills/plugins/roblox-dev",
+    "/absolute/path/to/roblox-skills/plugins/pages"
+  ]
+}
 ```
 
 The Studio MCP, which needs Node.js 22 or later:
@@ -122,25 +141,34 @@ MCP's Studio plugin.
 For the template, download
 [`roblox-game-template.zip`](https://github.com/Crusherfire-Media/roblox-skills/releases/latest/download/roblox-game-template.zip)
 from the latest release. It holds only `template/`, with no history. Unzip it, rename the folder,
-install [Rokit](https://github.com/rojo-rbx/rokit#installation) and
-[pesde](https://docs.pesde.dev/installation/), and run `rokit install` and `pesde install` in that
-folder. The template's `AGENTS.md` lists the checks. From a terminal with Node.js,
-`npx tiged Crusherfire-Media/roblox-skills/template#v0.2.0 my-game` copies the same files.
+run `bash tools/setup-toolchain.sh --all`, and read the template's `AGENTS.md` for the checks. From a
+terminal with Node.js, `npx tiged Crusherfire-Media/roblox-skills/template#main my-game` copies the
+same files.
 
 ## Develop
 
-- Run the tests with `npm test` (Node.js 22 or later). They cover both the Claude Code hooks and the
-  OpenCode adapters.
-- Load the local plugins in this repo with `opencode.json`: run `opencode plugin list` and check that
-  `roblox-dev` and `pages` are listed.
-- To release, set the new tag in `SETUP.md` (its "Release tag" line), in this README (the manual
-  install commands and the `tiged` command), and in the reviewer `curl` command. Bump `version` in
-  `plugins/<plugin>/package.json` and `plugins/<plugin>/.claude-plugin/plugin.json` for every plugin
-  whose files changed since the last tag (`git diff --stat <last-tag> -- plugins` lists them):
-  installs are cached by version, so an unchanged version keeps the old copy. Commit that to `main`,
-  then publish a GitHub release with a new tag on that commit. The Release workflow attaches
-  `roblox-game-template.zip` and `SETUP.md` to it; for a release without the zip, run the workflow by
-  hand with its tag.
+- Run the tests with `npm test` (Node.js 22 or later). They cover both hook adapters, the eval
+  harness, the packaged-plugin contract, and release version consistency.
+- `opencode.json` loads both local plugins for sessions in this repo. Check them with
+  `opencode plugin list`.
+- OpenCode reloads watched config and plugin files. When a local plugin dependency change does not
+  appear, run `npm run reload`; that calls the native `opencode service restart`. For installed
+  packages, use `opencode plugin update`.
+- `npm run pack:plugins` writes the npm tarballs to `dist/`. `npm run check:plugin-package --
+  --model <provider/model>` packs `roblox-dev`, extracts the tarball, loads it in a private OpenCode
+  config, and runs a live session that loads its skill; it also reports whether the package's skill
+  gate denied an edit.
+- Run an eval with `EVAL_MODEL=<provider/model>` and the commands in `evals/README.md`. The harness
+  uses private config directories and `opencode run --standalone`, so user plugins, skills, and MCP
+  servers do not enter a trial.
+- To release, set the new tag in `SETUP.md` (its "Release tag" line). If you pin the README commands
+  or reviewer `curl` to the release, use the same tag there; the default `main` references are also
+  valid. Bump `version` in `plugins/<plugin>/package.json` and
+  `plugins/<plugin>/.claude-plugin/plugin.json` for every plugin whose files changed since the last
+  tag (`git diff --stat <last-tag> -- plugins` lists them): installs are cached by version, so an
+  unchanged version keeps the old copy. Commit that to `main`, then publish a GitHub release with a
+  new tag on that commit. The Release workflow attaches `roblox-game-template.zip` and `SETUP.md` to
+  it; for a release without the zip, run the workflow by hand with its tag.
 
 ## Contributing
 

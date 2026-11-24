@@ -104,32 +104,21 @@ Done when the check passes.
 
 ## 3. Install Rokit and pesde
 
-Both install for the current user without admin rights. Run these blocks as written: they fetch the
-tested releases and verify their hashes.
+Both install for the current user without admin rights. The pinned installer checks
+the existing versions first and skips what is already correct.
 
-Check: `test -x "$HOME/.rokit/bin/rokit"`. Otherwise, install Rokit:
+Check: `test -x "$HOME/.rokit/bin/rokit" && test -x "$HOME/.pesde/bin/pesde"`.
 
-```zsh
-dir=$(mktemp -d)
-curl -fsSL -o "$dir/rokit.zip" https://github.com/rojo-rbx/rokit/releases/download/v1.2.0/rokit-1.2.0-macos-aarch64.zip
-echo 'eb8e6b4f8026db2b80ad0887c50f342958ecdbacbdeda2fd6028b3c4f774a3ee  '"$dir/rokit.zip" | shasum -a 256 -c -
-unzip -q "$dir/rokit.zip" -d "$dir"
-"$dir/rokit" self-install
-rm -rf "$dir"
-```
-
-Check: `test -x "$HOME/.pesde/bin/pesde"`. Otherwise, install pesde:
+Otherwise, download this release's installer and run it:
 
 ```zsh
-dir=$(mktemp -d)
-curl -fsSL -o "$dir/pesde.zip" 'https://github.com/pesde-pkg/pesde/releases/download/v0.7.4%2Bregistry.0.2.3/pesde-0.7.4-macos-aarch64.zip'
-echo 'de52939634467e7839b10aa3f258d04ffccda41aa40c14db68fb5601b9baf779  '"$dir/pesde.zip" | shasum -a 256 -c -
-unzip -q "$dir/pesde.zip" -d "$dir"
-"$dir/pesde" self-install
-rm -rf "$dir"
+mkdir -p "$TMPDIR/roblox-setup"
+curl -fsSL -o "$TMPDIR/roblox-setup/setup-toolchain.sh" "https://raw.githubusercontent.com/Crusherfire-Media/roblox-skills/TAG/template/tools/setup-toolchain.sh"
+bash "$TMPDIR/roblox-setup/setup-toolchain.sh" --install
 ```
 
-Done when `rokit --version` and `pesde --version` both print a version.
+When it reports a version mismatch, **Stop and ask** before replacing an existing tool with
+`--force`. When it reports a missing Homebrew, Node, VS Code, or Studio, fix that first.
 
 Keep both tool folders on the shell's PATH:
 
@@ -137,6 +126,8 @@ Keep both tool folders on the shell's PATH:
 line='export PATH="$HOME/.rokit/bin:$HOME/.pesde/bin:$PATH"'
 grep -qxF "$line" "$HOME/.zprofile" 2>/dev/null || echo "$line" >> "$HOME/.zprofile"
 ```
+
+Done when `rokit --version` and `pesde --version` both print the pinned versions, 1.2.0 and 0.7.4.
 
 ## 4. Confirm OpenCode runs
 
@@ -234,19 +225,15 @@ Done when `code --list-extensions` lists every ID in `extensions.json`. When one
 
 ## 8. Install the Roblox tools and run the checks
 
-Each of these commands skips what's already done, so run them every time:
+The template ships the same installer. It reads `rokit.toml` and `pesde.toml`, trusts the pinned
+tools, installs them, runs `pesde install`, and downloads the Roblox type definitions when they are
+missing. It is safe to run every time.
 
 ```zsh
-eval "$(/opt/homebrew/bin/brew shellenv)"
-export PATH="$HOME/.rokit/bin:$HOME/.pesde/bin:$HOME/.local/bin:/opt/homebrew/opt/node@22/bin:$PATH"
-rokit trust rojo-rbx/rojo lune-org/lune JohnnyMorganz/StyLua Kampfkarren/selene JohnnyMorganz/luau-lsp
-rokit install
-pesde install
-[ -f globalTypes.None.d.luau ] || curl -fsSL -o globalTypes.None.d.luau https://luau-lsp.pages.dev/type-definitions/globalTypes.None.d.luau
+bash tools/setup-toolchain.sh --project
 ```
 
-`rokit trust` comes first because Rokit's trust question can't be answered from your shell. When
-`pesde install` stops at a question: **Viewer:** run `pesde install` in the VS Code terminal and
+When `pesde install` stops at a question: **Viewer:** run `pesde install` in the VS Code terminal and
 answer it.
 
 Then run the five commands under "A change is done when these all pass" in the project's
@@ -360,9 +347,13 @@ Done when the check passes.
 Run all three checks first, and when more than one needs the viewer, ask for those actions in one
 message.
 
-1. Check: the project's `AGENTS.md` exists. The template ships one. The template's former Matt
-   Pocock skill setup ran through Claude Code; it has no OpenCode package, so leave it out unless
-   the viewer also uses Claude Code.
+1. Check: `~/.agents/skills/setup-matt-pocock-skills/SKILL.md` exists. When it does, leave the
+   viewer's installation untouched. When it's missing: **Stop and ask** whether to install Matt
+   Pocock's skills for OpenCode with
+   `npx skills@latest add mattpocock/skills -a opencode`, including
+   `setup-matt-pocock-skills` when the installer asks. Then, once per repo, ask OpenCode to run the
+   `setup-matt-pocock-skills` skill (or type `@setup-matt-pocock-skills`), answer its questions with
+   GitHub as the issue tracker and the default labels, and commit what it writes.
 2. Check: the `robloxstudio` MCP server reports a connected Studio place. When it reports none:
    **Viewer:** in Studio's **Plugins** tab, open the MCP plugin and confirm it shows **Connected**.
 3. Check through the MCP server: `ServerScriptService` holds the `Start` script. Otherwise:

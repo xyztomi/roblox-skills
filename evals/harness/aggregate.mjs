@@ -1,25 +1,23 @@
 #!/usr/bin/env node
-// Aggregates a results folder: runs skill-creator's aggregate_benchmark.py (pass
-// rate, time, and tokens as mean and stddev per setup, with the with-skill minus
-// baseline delta), then adds what that script doesn't know about: trial statuses,
-// whether the target skill loaded, cost, and the blind judge's verdicts.
+// Aggregates a results folder into benchmark.json and benchmark.md: pass rate,
+// time, tokens, and cost per setup, with the with-skill minus baseline delta,
+// plus trial statuses, whether the target skill loaded, and the blind judge.
 //
 //   node evals/harness/aggregate.mjs --results <dir> [--skill-name <name>] [--skill-path <path>]
 //     [--allow-contaminated]
 
-import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { parseArgs, skillCreatorDir } from "./lib/args.mjs";
+import { parseArgs } from "./lib/args.mjs";
 import { CONFIG_DIR } from "./lib/isolation.mjs";
 import { readJson, writeJson } from "./lib/workspace.mjs";
 
 const WITH = CONFIG_DIR["with-skill"];
 const BASE = CONFIG_DIR.baseline;
 
-function stats(values) {
+export function stats(values) {
 	if (values.length === 0) return { mean: 0, stddev: 0, min: 0, max: 0 };
 	const n = values.length;
 	const mean = values.reduce((a, b) => a + b, 0) / n;
@@ -55,6 +53,7 @@ export function harnessSummary(runs) {
 			trials: mine.length,
 			statuses,
 			target_skill_loaded: withTarget.length ? `${withTarget.filter((r) => r.target_skill_loaded).length}/${withTarget.length}` : null,
+			pass_rate: stats(mine.map((r) => r.pass_rate ?? 0)),
 			tokens: stats(mine.map((r) => r.tokens?.total_tokens ?? 0)),
 			output_tokens: stats(mine.map((r) => r.tokens?.output_tokens ?? 0)),
 			wall_seconds: stats(mine.map((r) => r.wall_seconds ?? 0)),
@@ -65,30 +64,76 @@ export function harnessSummary(runs) {
 	return byConfig;
 }
 
-function markdownSections(harness, runs, judge) {
-	const lines = ["", "## Trials", "", "| Setup | Trials | Statuses | Target skill loaded | Tokens (mean ± sd) | Wall s (mean ± sd) | Cost $ (mean, total) |", "|---|---|---|---|---|---|---|"];
-	for (const [config, h] of Object.entries(harness)) {
+export function buildBenchmark({ runs, harness, judge, skillName, skillPath }) {
+	const models = [...new Set(runs.map((r) => r.model).filter(Boolean))];
+	const runCounts = runs.reduce((acc, r) => ((acc[`${r.eval}/${r.config}`] = (acc[`${r.eval}/${r.config}`] ?? 0) + 1), acc), {});
+	const delta = {};
+	for (const key of ["pass_rate", "tokens", "output_tokens", "wall_seconds", "cost_usd"]) {
+		delta[key] = Math.round(((harness[WITH]?.[key]?.mean ?? 0) - (harness[BASE]?.[key]?.mean ?? 0)) * 10000) / 10000;
+	}
+	return {
+		metadata: {
+			skill_name: skillName ?? null,
+			skill_path: skillPath ?? null,
+			executor_model: models.join(", ") || "unknown",
+			analyzer_model: judge ? "judge: see judge-summary.json" : null,
+			runs_per_configuration: Math.max(0, ...Object.values(runCounts)),
+			generated_at: new Date().toISOString(),
+			harness: "opencode",
+		},
+		configurations: { [WITH]: harness[WITH], [BASE]: harness[BASE] },
+		delta,
+		runs,
+		judge: judge ?? null,
+	};
+}
+
+function markdown(benchmark, runs) {
+	const h = benchmark.configurations;
+	const j = benchmark.judge;
+	const lines = [
+		"# Skill benchmark",
+		"",
+		`**Model**: ${benchmark.metadata.executor_model}`,
+		`**Runs per configuration**: ${benchmark.metadata.runs_per_configuration}`,
+		"",
+		"## Trials",
+		"",
+		"| Setup | Trials | Statuses | Target skill loaded | Pass rate (mean ± sd) | Tokens (mean ± sd) | Wall s (mean ± sd) | Cost $ (mean, total) |",
+		"|---|---|---|---|---|---|---|---|",
+	];
+	for (const config of [WITH, BASE]) {
+		const c = h[config];
 		lines.push(
-			`| ${config} | ${h.trials} | ${Object.entries(h.statuses).map(([k, v]) => `${k} ${v}`).join(", ")} | ${h.target_skill_loaded ?? "n/a"} | ${Math.round(h.tokens.mean)} ± ${Math.round(h.tokens.stddev)} | ${h.wall_seconds.mean.toFixed(1)} ± ${h.wall_seconds.stddev.toFixed(1)} | ${h.cost_usd.mean.toFixed(4)}, ${h.total_cost_usd.toFixed(4)} |`,
+			`| ${config} | ${c.trials} | ${Object.entries(c.statuses).map(([k, v]) => `${k} ${v}`).join(", ")} | ${c.target_skill_loaded ?? "n/a"} | ${c.pass_rate.mean} ± ${c.pass_rate.stddev} | ${Math.round(c.tokens.mean)} ± ${Math.round(c.tokens.stddev)} | ${c.wall_seconds.mean.toFixed(1)} ± ${c.wall_seconds.stddev.toFixed(1)} | ${c.cost_usd.mean.toFixed(4)}, ${c.total_cost_usd.toFixed(4)} |`,
 		);
 	}
-	lines.push("", "Tokens count input, output, and cache reads and writes across every model the session used.", "", "## Per trial", "", "| Eval | Setup | Run | Status | Pass rate | Skills loaded | Tokens | Output tokens | Wall s | Cost $ |", "|---|---|---|---|---|---|---|---|---|---|");
+	const d = benchmark.delta;
+	lines.push(
+		"",
+		`**Delta (with-skill minus baseline)**: pass rate ${d.pass_rate >= 0 ? "+" : ""}${d.pass_rate}, tokens ${Math.round(d.tokens)}, wall ${d.wall_seconds.toFixed(1)} s, cost $${d.cost_usd.toFixed(4)}.`,
+		"",
+		"Tokens count input, output, reasoning, and cache reads and writes across every model step.",
+		"",
+		"## Per trial",
+		"",
+		"| Eval | Setup | Run | Status | Pass rate | Skills loaded | Tokens | Output tokens | Wall s | Cost $ |",
+		"|---|---|---|---|---|---|---|---|---|---|",
+	);
 	for (const r of runs) {
 		lines.push(
 			`| ${r.eval} | ${r.config} | ${r.run} | ${r.status} | ${r.pass_rate ?? 0} | ${(r.skills_loaded ?? []).join(", ") || "none"} | ${r.tokens?.total_tokens ?? 0} | ${r.tokens?.output_tokens ?? 0} | ${r.wall_seconds ?? 0} | ${(r.cost_usd ?? 0).toFixed(4)} |`,
 		);
 	}
-	if (judge) {
+	if (j) {
 		lines.push("", "## Blind judge", "", "| Eval | Pairs judged | with_skill wins | without_skill wins | Ties | Mean score with_skill | Mean score without_skill |", "|---|---|---|---|---|---|---|");
-		for (const [name, e] of Object.entries(judge.evals)) {
+		for (const [name, e] of Object.entries(j.evals)) {
 			lines.push(`| ${name} | ${e.judged}/${e.pairs} | ${e.wins[WITH]} | ${e.wins[BASE]} | ${e.wins.TIE} | ${e.mean_score[WITH] ?? "-"} | ${e.mean_score[BASE] ?? "-"} |`);
 		}
-		const t = judge.totals;
+		const t = j.totals;
 		lines.push(`| **All** | ${t.judged}/${t.pairs} | ${t[WITH]} | ${t[BASE]} | ${t.TIE} | ${t.mean_score[WITH] ?? "-"} | ${t.mean_score[BASE] ?? "-"} |`);
-		const c = judge.judge_cost;
-		lines.push("", `Judge runs: ${c.runs}, mean ${Math.round(c.mean_tokens ?? 0)} tokens and ${c.mean_wall_seconds ?? 0} s each, $${c.total_cost_usd} in total.`);
 	}
-	return lines.join("\n");
+	return `${lines.join("\n")}\n`;
 }
 
 async function main() {
@@ -105,34 +150,19 @@ async function main() {
 		throw new Error(`${contaminated.length} contaminated trial(s); fix isolation and rerun, or pass --allow-contaminated`);
 	}
 
-	const scDir = skillCreatorDir();
-	const py = process.env.PYTHON ?? (process.platform === "win32" ? "python" : "python3");
-	const args = ["-m", "scripts.aggregate_benchmark", results];
-	if (flags["skill-name"]) args.push("--skill-name", flags["skill-name"]);
-	if (flags["skill-path"]) args.push("--skill-path", flags["skill-path"]);
-	const res = spawnSync(py, args, { cwd: scDir, encoding: "utf8", env: { ...process.env, PYTHONUTF8: "1" } });
-	if (res.error || res.status !== 0) throw new Error(`aggregate_benchmark.py failed: ${res.error?.message ?? res.stderr}`);
-	process.stdout.write(res.stdout);
-
-	const benchmarkFile = path.join(results, "benchmark.json");
-	const benchmark = readJson(benchmarkFile);
-	const models = [...new Set(runs.map((r) => r.model).filter(Boolean))];
-	const runCounts = runs.reduce((acc, r) => ((acc[`${r.eval}/${r.config}`] = (acc[`${r.eval}/${r.config}`] ?? 0) + 1), acc), {});
-	benchmark.metadata.executor_model = models.join(", ") || "unknown";
-	benchmark.metadata.runs_per_configuration = Math.max(...Object.values(runCounts));
+	const harness = harnessSummary(runs);
 	const judgeFile = path.join(results, "judge-summary.json");
 	const judge = existsSync(judgeFile) ? readJson(judgeFile) : null;
-	if (judge) benchmark.metadata.analyzer_model = "judge: see judge-summary.json";
-	benchmark.harness = harnessSummary(runs);
-	if (judge) benchmark.judge = judge;
-	writeJson(benchmarkFile, benchmark);
-
-	// aggregate_benchmark.py writes placeholders for the model and a fixed run count.
-	const md = readFileSync(path.join(results, "benchmark.md"), "utf8")
-		.replace("**Model**: <model-name>", `**Model**: ${benchmark.metadata.executor_model}`)
-		.replace(/(\*\*Evals\*\*: .*\()3 runs each/, `$1${benchmark.metadata.runs_per_configuration} runs each`);
-	writeFileSync(path.join(results, "benchmark.md"), `${md}\n${markdownSections(benchmark.harness, runs, judge)}\n`);
-	process.stdout.write(`Updated ${benchmarkFile} and benchmark.md\n`);
+	const benchmark = buildBenchmark({
+		runs,
+		harness,
+		judge,
+		skillName: flags["skill-name"],
+		skillPath: flags["skill-path"],
+	});
+	writeJson(path.join(results, "benchmark.json"), benchmark);
+	writeFileSync(path.join(results, "benchmark.md"), markdown(benchmark, runs));
+	process.stdout.write(`Updated ${path.join(results, "benchmark.json")} and benchmark.md\n`);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
