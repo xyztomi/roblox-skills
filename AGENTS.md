@@ -38,8 +38,8 @@ This repo ships OpenCode plugins and a Roblox starter project. It is not a Roblo
 
 ## Release
 
-- The tag appears in `SETUP.md` (the exact line `Release tag: \`vX.Y.Z\``). The README install commands use `main` so they work before a release; a published tag is optional there. The release workflow greps `SETUP.md` for that exact line.
+- The tag appears in `SETUP.md` (the exact line `Release tag: \`vX.Y.Z\``) and in the README install, reviewer `curl`, and `tiged` commands. `SETUP.md` uses `TAG` placeholders for the rest. The release workflow greps `SETUP.md` for that exact line.
 - Bump `version` in both `plugins/<plugin>/package.json` and `plugins/<plugin>/.claude-plugin/plugin.json` for every plugin whose files changed since the last tag. `tools/release.test.mjs` enforces that the two agree.
 - Do not push, tag, or publish without the user's approval.
 - The release workflow zips `template/` at the tag and requires `places.json` (or an older `default.project.json`) at its root.
-- `README.md` says the repo does not accept outside pull requests; maintainers still work through branches and PRs into `main`.
+- This fork accepts PRs into `main`; the upstream project does not accept outside pull requests.

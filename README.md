@@ -170,7 +170,8 @@ same files.
 
 ## Contributing
 
-This repo doesn't accept pull requests. Fork it and make it your own. The MIT license allows it.
+This fork accepts pull requests against `main`. The upstream project does not accept external pull
+requests; fork it and make it your own. The MIT license allows it.
 
 ## License
 
