@@ -166,7 +166,9 @@ same files.
   tag (`git diff --stat <last-tag> -- plugins` lists them): installs are cached by version, so an
   unchanged version keeps the old copy. Commit that to `main`, then publish a GitHub release with a
   new tag on that commit. The Release workflow attaches `roblox-game-template.zip` and `SETUP.md` to
-  it; for a release without the zip, run the workflow by hand with its tag.
+  it. If the release event does not start it, run
+  `gh workflow run Release --ref main -f tag=vX.Y.Z`. For a release without the zip, run the same
+  command with that tag.
 
 ## Contributing
 
