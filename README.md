@@ -1,9 +1,10 @@
 # roblox-skills
 
-OpenCode plugins and a starter project for Roblox game development, from
-[Crusherfire Media](https://github.com/Crusherfire-Media). The workflow keeps your game in Git,
-syncs it into Studio with Rojo, and gives OpenCode the skills, checks, and Studio access to work
-on it.
+OpenCode plugins and a starter project for Roblox game development, forked from
+[Crusherfire Media's roblox-skills](https://github.com/Crusherfire-Media/roblox-skills) and
+released from [xyztomi/roblox-skills](https://github.com/xyztomi/roblox-skills). The workflow keeps
+your game in Git, syncs it into Studio with Rojo, and gives OpenCode the skills, checks, and Studio
+access to work on it.
 
 ## What's here
 
@@ -85,7 +86,7 @@ Studio once. You also need a GitHub account.
 Open an empty folder in OpenCode and paste:
 
 ```
-Set up this folder as a Roblox game project with the Crusherfire Roblox AI workflow. Download the latest `SETUP.md` from `https://github.com/Crusherfire-Media/roblox-skills/releases/latest/download/SETUP.md` with `curl -L` and follow it step by step. Skip anything that's already installed, and stop and ask me before any step that needs my accounts or keys.
+Set up this folder as a Roblox game project with the Crusherfire Roblox AI workflow. Download the latest `SETUP.md` from `https://github.com/xyztomi/roblox-skills/releases/latest/download/SETUP.md` with `curl -L` and follow it step by step. Skip anything that's already installed, and stop and ask me before any step that needs my accounts or keys.
 ```
 
 OpenCode follows the [`SETUP.md`](SETUP.md) attached to the latest release. Along the way you sign in
@@ -94,25 +95,22 @@ setup is a separate, optional step: ask for it when you're ready.
 
 ## Manual install
 
-Install the plugins from the development branch:
+Install the v0.2.0 release:
 
 ```
-opencode plugin add 'github:Crusherfire-Media/roblox-skills#main::path:plugins/roblox-dev'
-opencode plugin add 'github:Crusherfire-Media/roblox-skills#main::path:plugins/pages'
+opencode plugin add 'github:xyztomi/roblox-skills#v0.2.0::path:plugins/roblox-dev'
+opencode plugin add 'github:xyztomi/roblox-skills#v0.2.0::path:plugins/pages'
 ```
 
-For a fixed copy, replace `main` with a published release tag. `opencode plugin update` moves a
-branch or range forward; an exact tag stays put. OpenCode caches packages by version.
-
-Until this branch lands on `main`, use the absolute-path method below; the `#main` commands work
-after it lands.
+For a moving copy, replace `v0.2.0` with `main`. `opencode plugin update` moves a branch or range
+forward; an exact tag stays put. OpenCode caches packages by version.
 
 Install the reviewer subagent, which OpenCode does not load from a plugin package:
 
 ```
 mkdir -p ~/.config/opencode/agents
 curl -fsSL -o ~/.config/opencode/agents/reviewer.md \
-  https://raw.githubusercontent.com/Crusherfire-Media/roblox-skills/main/plugins/roblox-dev/agents/reviewer.md
+  https://raw.githubusercontent.com/xyztomi/roblox-skills/v0.2.0/plugins/roblox-dev/agents/reviewer.md
 ```
 
 To use this checkout without installing it, add the absolute plugin folders to a game repo's
@@ -139,10 +137,10 @@ loads in the next conversation you start. Restart Studio after the first MCP run
 MCP's Studio plugin.
 
 For the template, download
-[`roblox-game-template.zip`](https://github.com/Crusherfire-Media/roblox-skills/releases/latest/download/roblox-game-template.zip)
+[`roblox-game-template.zip`](https://github.com/xyztomi/roblox-skills/releases/latest/download/roblox-game-template.zip)
 from the latest release. It holds only `template/`, with no history. Unzip it, rename the folder,
 run `bash tools/setup-toolchain.sh --all`, and read the template's `AGENTS.md` for the checks. From a
-terminal with Node.js, `npx tiged Crusherfire-Media/roblox-skills/template#main my-game` copies the
+terminal with Node.js, `npx tiged xyztomi/roblox-skills/template#v0.2.0 my-game` copies the
 same files.
 
 ## Develop
@@ -161,9 +159,9 @@ same files.
 - Run an eval with `EVAL_MODEL=<provider/model>` and the commands in `evals/README.md`. The harness
   uses private config directories and `opencode run --standalone`, so user plugins, skills, and MCP
   servers do not enter a trial.
-- To release, set the new tag in `SETUP.md` (its "Release tag" line). If you pin the README commands
-  or reviewer `curl` to the release, use the same tag there; the default `main` references are also
-  valid. Bump `version` in `plugins/<plugin>/package.json` and
+- To release, set the new tag in `SETUP.md` (its "Release tag" line), in the README install commands
+  and `tiged` command, and in the reviewer `curl`. Bump `version` in
+  `plugins/<plugin>/package.json` and
   `plugins/<plugin>/.claude-plugin/plugin.json` for every plugin whose files changed since the last
   tag (`git diff --stat <last-tag> -- plugins` lists them): installs are cached by version, so an
   unchanged version keeps the old copy. Commit that to `main`, then publish a GitHub release with a

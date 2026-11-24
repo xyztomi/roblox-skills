@@ -1,10 +1,15 @@
 # roblox-dev hooks
 
-Claude Code hooks that make sure the right skills are loaded before Luau edits and that edited Luau passes the project's checks. `hooks.json` wires them up. They watch Luau files (`.luau`, `.lua`) in a Rojo repo (a folder with a `default.project.json`) or a pesde workspace, and leave every other file alone. Each hook fails open: if it errors, the tool call or turn goes ahead.
+The OpenCode adapter in `../opencode/server.js` is the supported path. The legacy Claude Code hooks
+are kept for backward compatibility, and `hooks.json` still wires them up. Both make sure the right
+skills are loaded before Luau edits and that edited Luau passes the project's checks. They watch
+Luau files (`.luau`, `.lua`) in a Rojo repo (a folder with a `default.project.json`) or a pesde
+workspace, and leave every other file alone. Each hook fails open: if it errors, the tool call or
+turn goes ahead.
 
-The same behavior is available to OpenCode through `../opencode/server.js`, which registers the
-skills and implements the four checks with OpenCode's tool, session, and event hooks. It shares the
-rules in `lib/`, so a change to the gate, the lint, or the verify checks applies to both adapters.
+The OpenCode adapter registers the skills and implements the four checks with OpenCode's tool,
+session, and event hooks. It shares the rules in `lib/`, so a change to the gate, the lint, or the
+verify checks applies to both adapters.
 
 ## OpenCode adapter
 
@@ -16,7 +21,7 @@ The four checks map to OpenCode like this:
 
 | Claude Code hook | OpenCode handler | Behavior |
 |---|---|---|
-| `skill-gate.mjs` (PreToolUse) | `tool.execute.before` on `edit`, `write`, `patch` | Throws before an edit whose skills are not loaded. Loaded skills come from `session.skill.activated`, and compaction clears them. |
+| `skill-gate.mjs` (PreToolUse) | `tool.execute.before` on `edit`, `write`, `patch` | Throws before an edit whose skills are not loaded. Loaded skills come from the session messages, with `session.skill.activated` as a fallback; compaction clears them. |
 | `after-edit.mjs` (PostToolUse) | `tool.execute.after` | Appends convention findings to the tool result. Never blocks. |
 | `skill-hints.mjs` (UserPromptSubmit, Read, compact) | `session.prompt`, `tool.execute.after`, compaction events | Queues a hint and adds it as a system part before the next model request. |
 | `verify-gate.mjs` (Stop) | `experimental.idle` | Runs the checks on the turn's edited files, including subagent edits, and sends the findings as a synthetic message. Blocks once per prompt. |
@@ -27,7 +32,7 @@ Denies a Luau file edit until the skills it needs are loaded, and names them in 
 
 ## `after-edit.mjs` (PostToolUse: Edit, Write, MultiEdit)
 
-Checks the lines an edit added against mechanical conventions (em dashes or `--` used as a dash in comments, text on a `--[[` line, one-line guard clauses, British spellings) and reports any it finds to Claude as context. It never blocks.
+Checks the lines an edit added against mechanical conventions (em dashes or `--` used as a dash in comments, text on a `--[[` line, one-line guard clauses, British spellings) and reports any it finds to the model as context. It never blocks.
 
 ## `skill-hints.mjs` (UserPromptSubmit, PostToolUse: Read, SessionStart: compact)
 
@@ -35,18 +40,19 @@ Suggests skills early. A prompt that mentions UI, performance, specs, Rojo, and 
 
 ## `verify-gate.mjs` (Stop)
 
-When Claude finishes a turn that edited Luau files (directly or through subagents), runs `luau-lsp analyze`, `selene`, and `stylua --check` on those files from the project root, and blocks the stop with the findings. It looks for the tools on PATH and in Rokit's bin (`~/.rokit/bin`). A check is skipped with a one-line note when its tool is missing or the project lacks what it needs to give true answers:
+When a Claude Code session finishes a turn that edited Luau files (directly or through subagents), runs `luau-lsp analyze`, `selene`, and `stylua --check` on those files from the project root, and blocks the stop with the findings. It looks for the tools on PATH and in Rokit's bin (`~/.rokit/bin`). A check is skipped with a one-line note when its tool is missing or the project lacks what it needs to give true answers:
 
 - `luau-lsp analyze` needs Roblox type definitions (`globalTypes*.d.luau` in the project root or `types/`, or a local file under `luau-lsp.types.definitionFiles` in `.vscode/settings.json`) and a `sourcemap.json`.
 - `selene` needs a `selene.toml`.
 - `stylua` needs a `stylua.toml` or `.stylua.toml`.
 
-It blocks once per prompt: the next stop goes through, so Claude can explain a finding it chose to leave.
+It blocks once per prompt: the next stop goes through, so the model can explain a finding it chose to leave.
 
 ## Tests
 
-`npm test` from the repo root runs `test/hooks.test.mjs` (the Claude Code hooks), `opencode/test`
-(the OpenCode adapters), and `pages`' tests. The hook tests pipe hook JSON into each hook against
-transcripts and a small Rojo repo it writes to a temp folder. The test that runs fake tools end to
-end uses shell scripts, so it is skipped on Windows and runs in CI. The OpenCode tests drive the
-same gate, lint, and hint decisions through fake OpenCode handlers.
+`npm test` from the repo root runs `hooks/test/hooks.test.mjs` (the Claude Code hooks),
+`opencode/test` (the OpenCode adapters), the page gate, the eval harness, and the release checks.
+The hook tests pipe hook JSON into each hook against transcripts and a small Rojo repo it writes to
+a temp folder. The test that runs fake tools end to end uses shell scripts, so it is skipped on
+Windows and runs in CI. The OpenCode tests drive the same gate, lint, and hint decisions through
+fake OpenCode handlers.

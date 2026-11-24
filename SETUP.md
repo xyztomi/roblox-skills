@@ -113,7 +113,7 @@ Otherwise, download this release's installer and run it:
 
 ```zsh
 mkdir -p "$TMPDIR/roblox-setup"
-curl -fsSL -o "$TMPDIR/roblox-setup/setup-toolchain.sh" "https://raw.githubusercontent.com/Crusherfire-Media/roblox-skills/TAG/template/tools/setup-toolchain.sh"
+curl -fsSL -o "$TMPDIR/roblox-setup/setup-toolchain.sh" "https://raw.githubusercontent.com/xyztomi/roblox-skills/TAG/template/tools/setup-toolchain.sh"
 bash "$TMPDIR/roblox-setup/setup-toolchain.sh" --install
 ```
 
@@ -182,7 +182,7 @@ When a check fails, download this release's template:
 src="$TMPDIR/roblox-setup/template-TAG"
 mkdir -p "$src"
 if [ ! -d "$src/roblox-game-template" ]; then
-  curl -fsSL -o "$src.zip" "https://github.com/Crusherfire-Media/roblox-skills/releases/download/TAG/roblox-game-template.zip"
+  curl -fsSL -o "$src.zip" "https://github.com/xyztomi/roblox-skills/releases/download/TAG/roblox-game-template.zip"
   unzip -q -o "$src.zip" -d "$src"
 fi
 ```
@@ -258,8 +258,8 @@ The OpenCode plugins, at user scope so they work in every folder. The `#TAG` pin
 release:
 
 ```zsh
-opencode plugin add "github:Crusherfire-Media/roblox-skills#TAG::path:plugins/roblox-dev"
-opencode plugin add "github:Crusherfire-Media/roblox-skills#TAG::path:plugins/pages"
+opencode plugin add "github:xyztomi/roblox-skills#TAG::path:plugins/roblox-dev"
+opencode plugin add "github:xyztomi/roblox-skills#TAG::path:plugins/pages"
 ```
 
 The reviewer subagent, which OpenCode does not load from a plugin package:
@@ -267,7 +267,7 @@ The reviewer subagent, which OpenCode does not load from a plugin package:
 ```zsh
 mkdir -p "$HOME/.config/opencode/agents"
 curl -fsSL -o "$HOME/.config/opencode/agents/reviewer.md" \
-  "https://raw.githubusercontent.com/Crusherfire-Media/roblox-skills/TAG/plugins/roblox-dev/agents/reviewer.md"
+  "https://raw.githubusercontent.com/xyztomi/roblox-skills/TAG/plugins/roblox-dev/agents/reviewer.md"
 ```
 
 The Studio MCP server, at user scope so it works in every folder. An "already exists" error means
