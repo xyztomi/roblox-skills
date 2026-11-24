@@ -1,4 +1,4 @@
-// The OpenCode adapter keeps the Claude Code hooks' decisions. These tests drive its handlers
+// The OpenCode adapter keeps the original hook decisions. These tests drive its handlers
 // with the same fake repo shape: a project file, a watched Luau script, and session state.
 
 import assert from 'node:assert/strict';

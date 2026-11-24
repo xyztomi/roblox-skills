@@ -1,8 +1,0 @@
-{
-  "properties": {
-    "Tags": ["LOAD_MODULE"]
-  },
-  "attributes": {
-    "RelocateToReplicatedStorage": true
-  }
-}

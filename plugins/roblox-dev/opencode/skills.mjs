@@ -1,5 +1,5 @@
 // Registers this plugin's SKILL.md files with OpenCode. The skill files stay in `skills/`, one
-// source shared with the Claude Code plugin, and OpenCode discovers them through this transform.
+// source registered with OpenCode through this transform.
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';

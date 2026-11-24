@@ -4,7 +4,7 @@
 // skill. With roblox-dev it also tries a Luau edit and reports whether the skill
 // gate denied it. This is the packaged-artifact test, not a test of the checkout.
 //
-//   node tools/test-plugin-package.mjs --model <provider/model> [--plugin roblox-dev] [--skill <id>]
+//   node tools/check-plugin-package.mjs --model <provider/model> [--skill <id>]
 
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
@@ -12,12 +12,11 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-import { parseArgs } from "../evals/harness/lib/args.mjs";
-import { runOpencode, writeTrialConfig } from "../evals/harness/lib/opencode.mjs";
-import { finalText, findError, hooksFired, parseEvents, skillsLoaded } from "../evals/harness/lib/stream.mjs";
+import { parseArgs } from "./lib/args.mjs";
+import { runOpencode, writeTrialConfig } from "./lib/opencode.mjs";
+import { finalText, findError, hooksFired, parseEvents, skillsLoaded } from "./lib/stream.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const DEFAULTS = { "roblox-dev": "luau-style-guide", pages: "html-kit" };
 
 function pack(pluginDir, dest) {
 	const res = spawnSync("npm", ["pack", "--pack-destination", dest], { cwd: pluginDir, encoding: "utf8" });
@@ -38,10 +37,8 @@ async function main() {
 	const { flags } = parseArgs(process.argv.slice(2));
 	const model = flags.model ?? process.env.EVAL_MODEL;
 	if (!model) throw new Error("--model is required (or set EVAL_MODEL)");
-	const plugin = flags.plugin ?? "roblox-dev";
-	const skill = flags.skill ?? DEFAULTS[plugin];
-	if (!skill) throw new Error(`unknown plugin ${plugin}; pass --skill`);
-	const pluginDir = path.join(ROOT, "plugins", plugin);
+	const skill = flags.skill ?? "luau-style-guide";
+	const pluginDir = path.join(ROOT, "plugins", "roblox-dev");
 	const work = mkdtempSync(path.join(os.tmpdir(), "plugin-package-"));
 	try {
 		const tarball = pack(pluginDir, work);
@@ -68,23 +65,20 @@ async function main() {
 		const text = finalText(skillEvents);
 		const errors = findError(skillEvents);
 
-		let gate = "not run";
-		if (plugin === "roblox-dev") {
-			const editRun = path.join(work, "edit");
-			mkdirSync(editRun, { recursive: true });
-			rmSync(path.join(project, "src", "ServerScriptService", "PackageCheck.server.luau"), { force: true });
-			await runOpencode({
-				prompt: "Do not load any skills. Create src/ServerScriptService/PackageCheck.server.luau containing exactly: local x = 1",
-				cwd: project,
-				configDir,
-				model,
-				transcriptPath: path.join(editRun, "transcript.jsonl"),
-				stderrPath: path.join(editRun, "stderr.log"),
-				timeoutMs: 180_000,
-			});
-			const editEvents = parseEvents(readFileSync(path.join(editRun, "transcript.jsonl"), "utf8"));
-			gate = hooksFired(editEvents).some((h) => h.hook_name === "skill-gate") ? "denied once" : "no denial (model may have loaded a skill first)";
-		}
+		const editRun = path.join(work, "edit");
+		mkdirSync(editRun, { recursive: true });
+		rmSync(path.join(project, "src", "ServerScriptService", "PackageCheck.server.luau"), { force: true });
+		await runOpencode({
+			prompt: "Do not load any skills. Create src/ServerScriptService/PackageCheck.server.luau containing exactly: local x = 1",
+			cwd: project,
+			configDir,
+			model,
+			transcriptPath: path.join(editRun, "transcript.jsonl"),
+			stderrPath: path.join(editRun, "stderr.log"),
+			timeoutMs: 180_000,
+		});
+		const editEvents = parseEvents(readFileSync(path.join(editRun, "transcript.jsonl"), "utf8"));
+		const gate = hooksFired(editEvents).some((h) => h.hook_name === "skill-gate") ? "denied once" : "no denial (model may have loaded a skill first)";
 
 		const ok = !errors && loaded.includes(skill) && text.trim() !== "";
 		process.stdout.write(`package: ${path.basename(tarball)}\n`);
@@ -98,6 +92,6 @@ async function main() {
 }
 
 main().catch((err) => {
-	console.error(`test-plugin-package: ${err.message}`);
+	console.error(`check-plugin-package: ${err.message}`);
 	process.exit(1);
 });

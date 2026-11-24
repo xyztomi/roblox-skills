@@ -1,96 +1,79 @@
 # roblox-skills
 
-OpenCode plugins and a Rojo/pesde starter project for Roblox game development. This is a fork of
-[Crusherfire Media's roblox-skills](https://github.com/Crusherfire-Media/roblox-skills), released
+OpenCode plugin and a Rojo/pesde template for Roblox game development. Fork of
+[Crusherfire Media's roblox-skills](https://github.com/Crusherfire-Media/roblox-skills), maintained
 from [xyztomi/roblox-skills](https://github.com/xyztomi/roblox-skills).
 
-## System
+## What it is
 
-`plugins/roblox-dev` is an OpenCode server plugin. `opencode/server.js` registers the 13 skills
-with `ctx.skill.transform` and installs four behaviors:
+`plugins/roblox-dev` is an OpenCode server plugin:
 
-- **skill gate:** `tool.execute.before` blocks a Luau edit until the skills that edit needs are
-  loaded.
-- **after-edit:** `tool.execute.after` appends Luau convention findings to the tool result.
-- **skill hints:** prompt, read, and compaction events queue a skill hint into the next model
-  request.
-- **verify gate:** `experimental.idle` runs luau-lsp, selene, and StyLua on the turn's edited files
-  and sends findings back as a synthetic message.
+- registers 13 skills with `ctx.skill.transform`,
+- gates Luau edits until the required skills are loaded,
+- appends Luau convention findings to edited files,
+- injects skill hints into the next model request,
+- runs luau-lsp, selene, and StyLua at the end of a turn.
 
-The gate, lint, hint, and verify rules live in `plugins/roblox-dev/hooks/lib/`. The legacy Claude
-Code hooks and manifest remain for compatibility, but OpenCode is the supported runtime. Skills
-stay in `skills/` and are never copied.
+The shared rules live in `plugins/roblox-dev/lib/`. Skills live in `skills/` and are never copied.
+`agents/reviewer.md` is a read-only Roblox reviewer subagent.
 
-`plugins/pages` adds the optional `html-kit` skill and a page gate. `plugins/roblox-dev/agents/reviewer.md`
-is a read-only Roblox reviewer subagent.
+`template/` is a single-place game: `default.project.json` at the root, code under `src/`, packages
+from `pesde.toml`, Jest from `test_packages/`, and an `.opencode/opencode.json` permission list for
+the five checks. `template/AGENTS.md` is the game repo's instructions.
 
-`template/` is a game repo: Rojo 7.7.1, pesde with Module Loader, Jest Roblox specs, StyLua, selene,
-luau-lsp, `.opencode/opencode.json`, and `AGENTS.md`. `places.json` maps every place folder to its
-place in the CI, staging, and production experiences.
-
-`evals/` is the OpenCode-native eval harness. Trials use a private `OPENCODE_CONFIG_DIR` and
-`opencode run --standalone`; the judge uses stateless OpenCode generation. See `evals/README.md`.
+There is no eval suite. `tools/check-plugin-package.mjs` is the live check.
 
 ## Requirements
 
-macOS on Apple Silicon. Install these yourself and keep them on `PATH`:
+macOS on Apple Silicon. Install and keep on `PATH`:
 
 - OpenCode 2.x, signed in to a provider
 - Node.js 22 or later
 - Git and GitHub CLI
 - VS Code and Roblox Studio
-- [Rokit](https://github.com/rojo-rbx/rokit) and [pesde](https://docs.pesde.dev/installation/)
-- The tools pinned in `template/rokit.toml`: Rojo, Lune, luau-lsp, StyLua, selene
+- Rokit and pesde
+- Rojo, Lune, luau-lsp, StyLua, and selene from `template/rokit.toml`
 
-The template pins tools in `rokit.toml` and packages in `pesde.toml`. This repository does not
-install or upgrade them.
+This repo does not install or upgrade the toolchain.
 
 ## Install
 
-Install the plugins from the release:
-
 ```sh
-opencode plugin add 'github:xyztomi/roblox-skills#v0.2.1::path:plugins/roblox-dev'
-opencode plugin add 'github:xyztomi/roblox-skills#v0.2.1::path:plugins/pages'
+opencode plugin add 'github:xyztomi/roblox-skills#v0.2.2::path:plugins/roblox-dev'
 ```
 
-For a moving copy, replace `v0.2.1` with `main`. `opencode plugin update` moves a branch or range
+For a moving copy, replace `v0.2.2` with `main`. `opencode plugin update` moves a branch or range
 forward; an exact tag stays put.
 
-Install the reviewer subagent, which OpenCode does not load from a plugin package:
+Reviewer subagent:
 
 ```sh
 mkdir -p ~/.config/opencode/agents
 curl -fsSL -o ~/.config/opencode/agents/reviewer.md \
-  https://raw.githubusercontent.com/xyztomi/roblox-skills/v0.2.1/plugins/roblox-dev/agents/reviewer.md
+  https://raw.githubusercontent.com/xyztomi/roblox-skills/v0.2.2/plugins/roblox-dev/agents/reviewer.md
 ```
 
-Install a Studio MCP server, for example:
+Studio MCP:
 
 ```sh
 opencode mcp add robloxstudio --global -- npx -y @chrrxs/robloxstudio-mcp@latest --auto-install-plugin
 ```
 
-Restart Studio after the first MCP run. In OpenCode, `/reload` reloads plugins and skills.
+Restart Studio after the first MCP run. `/reload` reloads plugins and skills.
 
-To work on this checkout without installing it, point a game repo at the absolute plugin paths:
+Local checkout:
 
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugins": [
-    "/absolute/path/to/roblox-skills/plugins/roblox-dev",
-    "/absolute/path/to/roblox-skills/plugins/pages"
-  ]
+  "plugins": ["/absolute/path/to/roblox-skills/plugins/roblox-dev"]
 }
 ```
 
 ## Template
 
-Copy the template and install its pinned project tools:
-
 ```sh
-npx tiged xyztomi/roblox-skills/template#v0.2.1 my-game
+npx tiged xyztomi/roblox-skills/template#v0.2.2 my-game
 cd my-game
 rokit trust rojo-rbx/rojo lune-org/lune JohnnyMorganz/StyLua Kampfkarren/selene JohnnyMorganz/luau-lsp
 rokit install
@@ -99,64 +82,53 @@ curl -L -o globalTypes.None.d.luau \
   https://luau-lsp.pages.dev/type-definitions/globalTypes.None.d.luau
 ```
 
-Or download `roblox-game-template.zip` from the latest release and use that folder.
-
-Validate a place:
+Validate:
 
 ```sh
-rojo build places/main/default.project.json -o game.rbxl
-rojo sourcemap places/main/default.project.json -o sourcemap.json --absolute
+rojo build default.project.json -o game.rbxl
+rojo sourcemap default.project.json -o sourcemap.json --absolute
 luau-lsp analyze --platform=roblox --sourcemap=sourcemap.json \
   --definitions:@roblox=globalTypes.None.d.luau \
-  --ignore="**/roblox_packages/**" places/main/src
-selene places tools
-stylua --check places tools
+  --ignore="**/roblox_packages/**" src
+selene src
+stylua --check src
 ```
-
-The template's `AGENTS.md` covers places, CI, and the project checks. `template/tools/ci/README.md`
-covers Open Cloud setup and the publish workflow.
 
 ## Development
 
 ```sh
-npm test                         # all node:test suites
-npm run reload                   # native: opencode service restart
-npm run pack:plugins             # npm tarballs in dist/
+npm test                         # unit and release tests
+npm run doctor                   # check OpenCode, tools, and template
+npm run reload                   # opencode service restart
+npm run pack:plugins             # npm tarball in dist/
 npm run check:plugin-package -- --model provider/model
+                                 # live packaged plugin: skill load and gate
+npm run check:release            # tag, README, and plugin version consistency
 ```
 
-OpenCode watches local plugin files, but a dependency change can require `npm run reload`. Use
-`opencode plugin update` for installed packages.
-
-The eval harness needs a model:
-
-```sh
-export EVAL_MODEL=provider/model
-node evals/harness/build-sandbox.mjs /tmp/sandbox
-node evals/harness/run-trials.mjs --task evals/vide/tasks/block-picker.json \
-  --sandbox /tmp/sandbox --out /tmp/results --setup both --runs 1 --model "$EVAL_MODEL"
-node evals/harness/judge.mjs --results /tmp/results --model "$EVAL_MODEL"
-node evals/harness/aggregate.mjs --results /tmp/results --skill-name vide
-```
+OpenCode watches local plugin files. If a dependency change does not appear, run `npm run reload`.
+Use `opencode plugin update` for installed packages.
 
 ## Release
 
-The tag appears in `SETUP.md`, the README install commands, the reviewer `curl`, and the `tiged`
-command. Bump `version` in both `plugins/<plugin>/package.json` and
-`plugins/<plugin>/.claude-plugin/plugin.json` for every changed plugin. Merge to `main`, publish a
-GitHub release on that commit, and run `gh workflow run Release --ref main -f tag=vX.Y.Z` if the
-release event does not start the asset workflow.
+Set the tag in `SETUP.md`, the README install commands, the reviewer `curl`, and the `tiged`
+command. Bump `version` in `plugins/roblox-dev/package.json`. Merge to `main`, tag that commit, and
+publish a GitHub release. If the release event does not start the asset workflow:
+
+```sh
+gh workflow run Release --ref main -f tag=vX.Y.Z
+```
+
+Then run `npm run check:release`.
 
 ## Layout
 
 | Path | Purpose |
 |---|---|
-| `plugins/roblox-dev/` | Skills, OpenCode plugin, legacy Claude hooks, reviewer |
-| `plugins/pages/` | `html-kit` skill and page gate |
-| `template/` | Pinned Roblox game template |
-| `evals/` | OpenCode eval harness and historical results |
-| `tools/` | Reload, package, package-check, and release tests |
-| `opencode.json` | Loads both local plugins in this repo |
+| `plugins/roblox-dev/` | Skills, OpenCode plugin, shared rules, reviewer |
+| `template/` | Pinned single-place Roblox project |
+| `tools/` | Doctor, reload, package, package check, release checks |
+| `opencode.json` | Loads the local plugin in this repo |
 
 ## License
 
