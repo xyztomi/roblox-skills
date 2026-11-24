@@ -17,8 +17,6 @@ before the first edit; the skill gate names the ones an edit needs.
 Run everything from the repo root.
 
 - `rokit install` after `rokit.toml` changes, and `pesde install` after either `pesde.toml` changes.
-- `bash tools/setup-toolchain.sh --check` reports missing or mismatched tools; `--all` installs
-  Rokit and pesde if needed, then installs the project tools and type definitions.
 - `rojo serve places/main/default.project.json` syncs a place into Studio. Connect from the Rojo
   plugin in your own dev place for it.
 - Specs run in Studio against the dev place, once Rojo has synced the files.

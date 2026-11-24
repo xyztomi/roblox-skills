@@ -1,120 +1,79 @@
 # roblox-skills
 
-OpenCode plugins and a starter project for Roblox game development, forked from
-[Crusherfire Media's roblox-skills](https://github.com/Crusherfire-Media/roblox-skills) and
-released from [xyztomi/roblox-skills](https://github.com/xyztomi/roblox-skills). The workflow keeps
-your game in Git, syncs it into Studio with Rojo, and gives OpenCode the skills, checks, and Studio
-access to work on it.
+OpenCode plugins and a Rojo/pesde starter project for Roblox game development. This is a fork of
+[Crusherfire Media's roblox-skills](https://github.com/Crusherfire-Media/roblox-skills), released
+from [xyztomi/roblox-skills](https://github.com/xyztomi/roblox-skills).
 
-## What's here
+## System
 
-### The `roblox-dev` plugin
+`plugins/roblox-dev` is an OpenCode server plugin. `opencode/server.js` registers the 13 skills
+with `ctx.skill.transform` and installs four behaviors:
 
-In `plugins/roblox-dev`. Skills load by ID, such as `vide` or `luau-style-guide`.
+- **skill gate:** `tool.execute.before` blocks a Luau edit until the skills that edit needs are
+  loaded.
+- **after-edit:** `tool.execute.after` appends Luau convention findings to the tool result.
+- **skill hints:** prompt, read, and compaction events queue a skill hint into the next model
+  request.
+- **verify gate:** `experimental.idle` runs luau-lsp, selene, and StyLua on the turn's edited files
+  and sends findings back as a synthetic message.
 
-| Skill | What it covers |
-|---|---|
-| `luau-style-guide` | Luau style and typing, based on Roblox's style guide |
-| `code-comments` | Which comments to write and keep, plus a cleanup pass |
-| `game-architecture` | Systems run by [Module Loader](https://github.com/ActualFire-Games/module-loader): layout, realms, lifecycle, and requires |
-| `rojo-workflow` | How files map into the place, `rojo serve`, syncback, pesde packages, and one worktree per agent |
-| `roblox-testing` | Jest Roblox specs, in Studio and in CI |
-| `roblox-performance` | Designing systems that scale, and finding and fixing lag |
-| `rbx-perf-profiling` | Reading MicroProfiler data through LibMP |
-| `game-ui-design` | Player-facing UI for phones, tablets, PCs, consoles, and VR |
-| `figma-to-roblox` | Porting a Figma design into Roblox UI |
-| `vide` | Vide, the reactive UI library |
-| `vide-charm` | Charm state in Vide UI |
-| `vide-performance` | Keeping Vide UI fast |
-| `vide-ui-labs` | UI Labs stories for Vide components |
+The gate, lint, hint, and verify rules live in `plugins/roblox-dev/hooks/lib/`. The legacy Claude
+Code hooks and manifest remain for compatibility, but OpenCode is the supported runtime. Skills
+stay in `skills/` and are never copied.
 
-**Hooks** (details in `plugins/roblox-dev/hooks/README.md`):
+`plugins/pages` adds the optional `html-kit` skill and a page gate. `plugins/roblox-dev/agents/reviewer.md`
+is a read-only Roblox reviewer subagent.
 
-- `skill-gate` holds back a Luau edit until the skills it needs are loaded.
-- `after-edit` flags new lines that break Luau conventions.
-- `skill-hints` suggests skills from your prompt and the files the agent reads.
-- `verify-gate` runs `luau-lsp analyze`, selene, and StyLua on the Luau files the agent edited before
-  it finishes a turn.
+`template/` is a game repo: Rojo 7.7.1, pesde with Module Loader, Jest Roblox specs, StyLua, selene,
+luau-lsp, `.opencode/opencode.json`, and `AGENTS.md`. `places.json` maps every place folder to its
+place in the CI, staging, and production experiences.
 
-The OpenCode adapter is `plugins/roblox-dev/opencode/server.js`; the Claude Code hook scripts are
-still in `plugins/roblox-dev/hooks/` and share the same rules.
+`evals/` is the OpenCode-native eval harness. Trials use a private `OPENCODE_CONFIG_DIR` and
+`opencode run --standalone`; the judge uses stateless OpenCode generation. See `evals/README.md`.
 
-**Reviewer:** the `reviewer` subagent checks larger Luau changes for Roblox-specific problems
-(remotes, data saving, yields, architecture) and returns ranked findings. For general correctness,
-use `/code-review`.
+## Requirements
 
-Matt Pocock's engineering skills work in OpenCode through the skills CLI. Install them once with
-`npx skills@latest add mattpocock/skills -a opencode`; OpenCode discovers them under
-`~/.agents/skills`. They are separate from this repo and are not reinstalled or modified here.
+macOS on Apple Silicon. Install these yourself and keep them on `PATH`:
 
-The skills work with any Studio MCP. The setup below adds
-[Chrrxs/robloxstudio-mcp](https://github.com/Chrrxs/robloxstudio-mcp); Roblox's
-[built-in Studio MCP](https://create.roblox.com/docs/studio/mcp) is the option with nothing to
-install.
+- OpenCode 2.x, signed in to a provider
+- Node.js 22 or later
+- Git and GitHub CLI
+- VS Code and Roblox Studio
+- [Rokit](https://github.com/rojo-rbx/rokit) and [pesde](https://docs.pesde.dev/installation/)
+- The tools pinned in `template/rokit.toml`: Rojo, Lune, luau-lsp, StyLua, selene
 
-### The `pages` plugin (optional)
+The template pins tools in `rokit.toml` and packages in `pesde.toml`. This repository does not
+install or upgrade them.
 
-In `plugins/pages`. Its `html-kit` skill writes HTML pages, such as a plan for a Roblox system,
-with themed components from one shared `kit.js`. A page holds only content, so it costs about as
-many tokens as markdown and opens in any browser. The plugin's gate holds back a new HTML page until
-the skill is loaded. It's [agent-html-kit](https://github.com/leex279/agent-html-kit) (MIT), restyled.
+## Install
 
-### The starter template
+Install the plugins from the release:
 
-`template/` is a game project ready to sync: Rojo 7.7.1, pesde with Module Loader, Jest Roblox
-specs, StyLua, selene, luau-lsp, VS Code settings, an `AGENTS.md`, and GitHub Actions workflows.
-Each place in the experience is a folder under `places/`, and `places.json` maps each one to its
-place in the CI, staging, and production experiences. Every pull request runs the lint and type
-checks. After the optional CI setup in `template/tools/ci/README.md`, pull requests also run every
-place's specs (in a CI experience, through Open Cloud), a merge to `main` publishes every place to
-staging, and a GitHub release publishes them to production.
-
-### Evals
-
-`evals/` measures each skill against runs without it, with a blind judge. Twelve of the 13 skills
-beat the baseline and `game-architecture` comes out even; [`evals/RESULTS.md`](evals/RESULTS.md)
-has the numbers from the earlier harness. The current harness runs trials through the OpenCode CLI
-and the judge through OpenCode's stateless generation, so it needs OpenCode and a model, not Claude
-Code. It is development tooling and does not ship with the plugin.
-
-## One-prompt setup
-
-The setup runs on an Apple Silicon Mac. First install [OpenCode](https://opencode.ai/docs/),
-[Homebrew](https://brew.sh), and [Roblox Studio](https://create.roblox.com/landing), and sign in to
-Studio once. You also need a GitHub account.
-
-Open an empty folder in OpenCode and paste:
-
-```
-Set up this folder as a Roblox game project with the xyztomi Roblox AI workflow. Download the latest `SETUP.md` from `https://github.com/xyztomi/roblox-skills/releases/latest/download/SETUP.md` with `curl -L` and follow it step by step. Skip anything that's already installed, and stop and ask me before any step that needs my accounts or keys.
-```
-
-OpenCode follows the [`SETUP.md`](SETUP.md) attached to the latest release. Along the way you sign in
-to GitHub, choose a name and visibility for your repo, and restart OpenCode and Studio once. CI
-setup is a separate, optional step: ask for it when you're ready.
-
-## Manual install
-
-Install the v0.2.1 release:
-
-```
+```sh
 opencode plugin add 'github:xyztomi/roblox-skills#v0.2.1::path:plugins/roblox-dev'
 opencode plugin add 'github:xyztomi/roblox-skills#v0.2.1::path:plugins/pages'
 ```
 
 For a moving copy, replace `v0.2.1` with `main`. `opencode plugin update` moves a branch or range
-forward; an exact tag stays put. OpenCode caches packages by version.
+forward; an exact tag stays put.
 
 Install the reviewer subagent, which OpenCode does not load from a plugin package:
 
-```
+```sh
 mkdir -p ~/.config/opencode/agents
 curl -fsSL -o ~/.config/opencode/agents/reviewer.md \
   https://raw.githubusercontent.com/xyztomi/roblox-skills/v0.2.1/plugins/roblox-dev/agents/reviewer.md
 ```
 
-To use this checkout without installing it, add the absolute plugin folders to a game repo's
-`.opencode/opencode.json`:
+Install a Studio MCP server, for example:
+
+```sh
+opencode mcp add robloxstudio --global -- npx -y @chrrxs/robloxstudio-mcp@latest --auto-install-plugin
+```
+
+Restart Studio after the first MCP run. In OpenCode, `/reload` reloads plugins and skills.
+
+To work on this checkout without installing it, point a game repo at the absolute plugin paths:
 
 ```json
 {
@@ -126,55 +85,79 @@ To use this checkout without installing it, add the absolute plugin folders to a
 }
 ```
 
-The Studio MCP, which needs Node.js 22 or later:
+## Template
 
+Copy the template and install its pinned project tools:
+
+```sh
+npx tiged xyztomi/roblox-skills/template#v0.2.1 my-game
+cd my-game
+rokit trust rojo-rbx/rojo lune-org/lune JohnnyMorganz/StyLua Kampfkarren/selene JohnnyMorganz/luau-lsp
+rokit install
+pesde install
+curl -L -o globalTypes.None.d.luau \
+  https://luau-lsp.pages.dev/type-definitions/globalTypes.None.d.luau
 ```
-opencode mcp add robloxstudio --global -- npx -y @chrrxs/robloxstudio-mcp@latest --auto-install-plugin
+
+Or download `roblox-game-template.zip` from the latest release and use that folder.
+
+Validate a place:
+
+```sh
+rojo build places/main/default.project.json -o game.rbxl
+rojo sourcemap places/main/default.project.json -o sourcemap.json --absolute
+luau-lsp analyze --platform=roblox --sourcemap=sourcemap.json \
+  --definitions:@roblox=globalTypes.None.d.luau \
+  --ignore="**/roblox_packages/**" places/main/src
+selene places tools
+stylua --check places tools
 ```
 
-In an OpenCode session that's already open, `/reload` loads new skills and plugins. The MCP server
-loads in the next conversation you start. Restart Studio after the first MCP run so it loads the
-MCP's Studio plugin.
+The template's `AGENTS.md` covers places, CI, and the project checks. `template/tools/ci/README.md`
+covers Open Cloud setup and the publish workflow.
 
-For the template, download
-[`roblox-game-template.zip`](https://github.com/xyztomi/roblox-skills/releases/latest/download/roblox-game-template.zip)
-from the latest release. It holds only `template/`, with no history. Unzip it, rename the folder,
-run `bash tools/setup-toolchain.sh --all`, and read the template's `AGENTS.md` for the checks. From a
-terminal with Node.js, `npx tiged xyztomi/roblox-skills/template#v0.2.1 my-game` copies the
-same files.
+## Development
 
-## Develop
+```sh
+npm test                         # all node:test suites
+npm run reload                   # native: opencode service restart
+npm run pack:plugins             # npm tarballs in dist/
+npm run check:plugin-package -- --model provider/model
+```
 
-- Run the tests with `npm test` (Node.js 22 or later). They cover both hook adapters, the eval
-  harness, the packaged-plugin contract, and release version consistency.
-- `opencode.json` loads both local plugins for sessions in this repo. Check them with
-  `opencode plugin list`.
-- OpenCode reloads watched config and plugin files. When a local plugin dependency change does not
-  appear, run `npm run reload`; that calls the native `opencode service restart`. For installed
-  packages, use `opencode plugin update`.
-- `npm run pack:plugins` writes the npm tarballs to `dist/`. `npm run check:plugin-package --
-  --model <provider/model>` packs `roblox-dev`, extracts the tarball, loads it in a private OpenCode
-  config, and runs a live session that loads its skill; it also reports whether the package's skill
-  gate denied an edit.
-- Run an eval with `EVAL_MODEL=<provider/model>` and the commands in `evals/README.md`. The harness
-  uses private config directories and `opencode run --standalone`, so user plugins, skills, and MCP
-  servers do not enter a trial.
-- To release, set the new tag in `SETUP.md` (its "Release tag" line), in the README install commands
-  and `tiged` command, and in the reviewer `curl`. Bump `version` in
-  `plugins/<plugin>/package.json` and
-  `plugins/<plugin>/.claude-plugin/plugin.json` for every plugin whose files changed since the last
-  tag (`git diff --stat <last-tag> -- plugins` lists them): installs are cached by version, so an
-  unchanged version keeps the old copy. Commit that to `main`, then publish a GitHub release with a
-  new tag on that commit. The Release workflow attaches `roblox-game-template.zip` and `SETUP.md` to
-  it. If the release event does not start it, run
-  `gh workflow run Release --ref main -f tag=vX.Y.Z`. For a release without the zip, run the same
-  command with that tag.
+OpenCode watches local plugin files, but a dependency change can require `npm run reload`. Use
+`opencode plugin update` for installed packages.
 
-## Contributing
+The eval harness needs a model:
 
-This fork accepts pull requests against `main`. The upstream project does not accept external pull
-requests; fork it and make it your own. The MIT license allows it.
+```sh
+export EVAL_MODEL=provider/model
+node evals/harness/build-sandbox.mjs /tmp/sandbox
+node evals/harness/run-trials.mjs --task evals/vide/tasks/block-picker.json \
+  --sandbox /tmp/sandbox --out /tmp/results --setup both --runs 1 --model "$EVAL_MODEL"
+node evals/harness/judge.mjs --results /tmp/results --model "$EVAL_MODEL"
+node evals/harness/aggregate.mjs --results /tmp/results --skill-name vide
+```
+
+## Release
+
+The tag appears in `SETUP.md`, the README install commands, the reviewer `curl`, and the `tiged`
+command. Bump `version` in both `plugins/<plugin>/package.json` and
+`plugins/<plugin>/.claude-plugin/plugin.json` for every changed plugin. Merge to `main`, publish a
+GitHub release on that commit, and run `gh workflow run Release --ref main -f tag=vX.Y.Z` if the
+release event does not start the asset workflow.
+
+## Layout
+
+| Path | Purpose |
+|---|---|
+| `plugins/roblox-dev/` | Skills, OpenCode plugin, legacy Claude hooks, reviewer |
+| `plugins/pages/` | `html-kit` skill and page gate |
+| `template/` | Pinned Roblox game template |
+| `evals/` | OpenCode eval harness and historical results |
+| `tools/` | Reload, package, package-check, and release tests |
+| `opencode.json` | Loads both local plugins in this repo |
 
 ## License
 
-[MIT](LICENSE)
+MIT. Original copyright and third-party notices are in `LICENSE` and `NOTICE.md`.
