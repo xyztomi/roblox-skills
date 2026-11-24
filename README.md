@@ -86,7 +86,7 @@ Studio once. You also need a GitHub account.
 Open an empty folder in OpenCode and paste:
 
 ```
-Set up this folder as a Roblox game project with the Crusherfire Roblox AI workflow. Download the latest `SETUP.md` from `https://github.com/xyztomi/roblox-skills/releases/latest/download/SETUP.md` with `curl -L` and follow it step by step. Skip anything that's already installed, and stop and ask me before any step that needs my accounts or keys.
+Set up this folder as a Roblox game project with the xyztomi Roblox AI workflow. Download the latest `SETUP.md` from `https://github.com/xyztomi/roblox-skills/releases/latest/download/SETUP.md` with `curl -L` and follow it step by step. Skip anything that's already installed, and stop and ask me before any step that needs my accounts or keys.
 ```
 
 OpenCode follows the [`SETUP.md`](SETUP.md) attached to the latest release. Along the way you sign in
@@ -95,14 +95,14 @@ setup is a separate, optional step: ask for it when you're ready.
 
 ## Manual install
 
-Install the v0.2.0 release:
+Install the v0.2.1 release:
 
 ```
-opencode plugin add 'github:xyztomi/roblox-skills#v0.2.0::path:plugins/roblox-dev'
-opencode plugin add 'github:xyztomi/roblox-skills#v0.2.0::path:plugins/pages'
+opencode plugin add 'github:xyztomi/roblox-skills#v0.2.1::path:plugins/roblox-dev'
+opencode plugin add 'github:xyztomi/roblox-skills#v0.2.1::path:plugins/pages'
 ```
 
-For a moving copy, replace `v0.2.0` with `main`. `opencode plugin update` moves a branch or range
+For a moving copy, replace `v0.2.1` with `main`. `opencode plugin update` moves a branch or range
 forward; an exact tag stays put. OpenCode caches packages by version.
 
 Install the reviewer subagent, which OpenCode does not load from a plugin package:
@@ -110,7 +110,7 @@ Install the reviewer subagent, which OpenCode does not load from a plugin packag
 ```
 mkdir -p ~/.config/opencode/agents
 curl -fsSL -o ~/.config/opencode/agents/reviewer.md \
-  https://raw.githubusercontent.com/xyztomi/roblox-skills/v0.2.0/plugins/roblox-dev/agents/reviewer.md
+  https://raw.githubusercontent.com/xyztomi/roblox-skills/v0.2.1/plugins/roblox-dev/agents/reviewer.md
 ```
 
 To use this checkout without installing it, add the absolute plugin folders to a game repo's
@@ -140,7 +140,7 @@ For the template, download
 [`roblox-game-template.zip`](https://github.com/xyztomi/roblox-skills/releases/latest/download/roblox-game-template.zip)
 from the latest release. It holds only `template/`, with no history. Unzip it, rename the folder,
 run `bash tools/setup-toolchain.sh --all`, and read the template's `AGENTS.md` for the checks. From a
-terminal with Node.js, `npx tiged xyztomi/roblox-skills/template#v0.2.0 my-game` copies the
+terminal with Node.js, `npx tiged xyztomi/roblox-skills/template#v0.2.1 my-game` copies the
 same files.
 
 ## Develop

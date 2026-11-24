@@ -1,6 +1,6 @@
 # Third-party notices
 
-This repository is licensed under the MIT License (see `LICENSE`), Copyright (c) 2026 Crusherfire Media. Some files include material from the third-party projects listed below. That material stays under its original license, reproduced here as each license requires.
+This repository is licensed under the MIT License (see `LICENSE`), Copyright (c) 2026 Crusherfire Media, with modifications Copyright (c) 2026 xyztomi. Some files include material from the third-party projects listed below. That material stays under its original license, reproduced here as each license requires.
 
 ## Material included in this repository
 

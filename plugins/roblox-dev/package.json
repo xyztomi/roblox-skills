@@ -1,11 +1,11 @@
 {
   "name": "roblox-dev",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Roblox game development skills for Luau, Rojo, testing, performance, and Vide UI, with OpenCode hooks that load the right skills before Luau edits.",
   "type": "module",
   "license": "MIT",
   "author": {
-    "name": "Crusherfire Media"
+    "name": "xyztomi"
   },
   "homepage": "https://github.com/xyztomi/roblox-skills",
   "repository": "https://github.com/xyztomi/roblox-skills",
@@ -24,5 +24,8 @@
     "luau",
     "rojo",
     "vide"
+  ],
+  "contributors": [
+    "Crusherfire Media"
   ]
 }

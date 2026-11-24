@@ -1,9 +1,9 @@
 {
-  "name": "crusherfire",
+  "name": "xyztomi",
   "owner": {
-    "name": "Crusherfire Media"
+    "name": "xyztomi"
   },
-  "description": "Crusherfire Media's Claude Code plugins for Roblox game development.",
+  "description": "xyztomi's Claude Code plugins for Roblox game development.",
   "plugins": [
     {
       "name": "roblox-dev",
