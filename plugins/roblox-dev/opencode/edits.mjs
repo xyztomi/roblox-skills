@@ -2,9 +2,9 @@
 // expect, and turns those rules into OpenCode gate decisions and hints.
 
 import { isAbsolute, resolve } from 'node:path';
-import { requiredSkillsForEdit } from '../hooks/lib/gate.mjs';
-import { buildsVideUi, isSpecPath, isStoryPath, looksLikeCharm, looksLikeVide } from '../hooks/lib/luau.mjs';
-import { findRojoProject, instancePathOfFile, isWatchedLuauFile } from '../hooks/lib/rojo.mjs';
+import { requiredSkillsForEdit } from '../lib/gate.mjs';
+import { buildsVideUi, isSpecPath, isStoryPath, looksLikeCharm, looksLikeVide } from '../lib/luau.mjs';
+import { findRojoProject, instancePathOfFile, isWatchedLuauFile } from '../lib/rojo.mjs';
 
 const EDIT_TOOLS = new Set(['edit', 'write', 'patch']);
 
@@ -55,7 +55,7 @@ function patchEdits(patchText, base) {
   return edits;
 }
 
-// The edit as the shared rules see it: Claude's tool names and argument fields.
+// The edit as the shared rules see it: normalized tool names and argument fields.
 export function normalizedEdits(tool, input, base) {
   switch (tool) {
     case 'edit':

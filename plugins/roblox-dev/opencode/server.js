@@ -1,6 +1,6 @@
-// The OpenCode server plugin for roblox-dev. It registers the plugin's skills and reproduces the
-// Claude Code hooks: the skill gate, the after-edit convention check, skill hints, and the verify
-// gate that runs luau-lsp, selene, and stylua before a turn ends.
+// The OpenCode server plugin for roblox-dev. It registers the plugin's skills and implements the
+// skill gate, the after-edit convention check, skill hints, and the verify gate that runs luau-lsp,
+// selene, and stylua before a turn ends.
 //
 // Every handler fails open. The only errors that reach the model are the gate denials, which are
 // deliberate.
@@ -8,10 +8,10 @@
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { responseText } from '../hooks/lib/hook-io.mjs';
-import { editLintContext } from '../hooks/lib/lint.mjs';
-import { projectRoot } from '../hooks/lib/project.mjs';
-import { filesInRoot, findTool, runChecks } from '../hooks/lib/verify.mjs';
+import { responseText } from '../lib/text.mjs';
+import { editLintContext } from '../lib/lint.mjs';
+import { projectRoot } from '../lib/project.mjs';
+import { filesInRoot, findTool, runChecks } from '../lib/verify.mjs';
 import { editedFiles, isEditTool, listSkills, normalizedEdits, promptHint, readHint, requiredForEdits } from './edits.mjs';
 import { registerSkills } from './skills.mjs';
 import { collectEditedFiles, createStore, handleEvent, skillsFromContext, verifyMessage } from './state.mjs';

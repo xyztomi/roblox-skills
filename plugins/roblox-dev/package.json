@@ -1,6 +1,6 @@
 {
   "name": "roblox-dev",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Roblox game development skills for Luau, Rojo, testing, performance, and Vide UI, with OpenCode hooks that load the right skills before Luau edits.",
   "type": "module",
   "license": "MIT",
@@ -15,7 +15,7 @@
   "files": [
     "opencode",
     "skills",
-    "hooks/lib",
+    "lib",
     "agents"
   ],
   "keywords": [

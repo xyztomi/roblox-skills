@@ -1,5 +1,0 @@
-std = "roblox"
-
-[lints]
-# Vide create() tables mix properties and children by design.
-mixed_table = "allow"

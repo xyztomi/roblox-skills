@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -10,29 +10,22 @@ function readJson(file) {
 	return JSON.parse(readFileSync(file, "utf8"));
 }
 
-const plugins = readdirSync(path.join(ROOT, "plugins"), { withFileTypes: true })
-	.filter((entry) => entry.isDirectory())
-	.map((entry) => entry.name);
+const plugin = "roblox-dev";
 
-test("each plugin's npm and Claude manifests agree on a version", () => {
-	for (const name of plugins) {
-		const npm = readJson(path.join(ROOT, "plugins", name, "package.json"));
-		const claude = readJson(path.join(ROOT, "plugins", name, ".claude-plugin", "plugin.json"));
-		assert.equal(npm.name, name, `${name} package.json name`);
-		assert.match(npm.version, /^\d+\.\d+\.\d+$/, `${name} version`);
-		assert.equal(npm.version, claude.version, `${name} versions agree`);
-	}
+test("the plugin package has a valid name and version", () => {
+	const npm = readJson(path.join(ROOT, "plugins", plugin, "package.json"));
+	assert.equal(npm.name, plugin);
+	assert.match(npm.version, /^\d+\.\d+\.\d+$/);
 });
 
-test("each plugin package exports an OpenCode entrypoint and ships its skills", () => {
-	for (const name of plugins) {
-		const dir = path.join(ROOT, "plugins", name);
-		const npm = readJson(path.join(dir, "package.json"));
-		const entry = npm.exports?.["."];
-		assert.ok(entry, `${name} exports an entrypoint`);
-		assert.ok(existsSync(path.join(dir, entry)), `${name} entrypoint exists`);
-		assert.ok(npm.files?.includes("opencode"), `${name} packs opencode/`);
-		assert.ok(npm.files?.includes("skills"), `${name} packs skills/`);
+test("the plugin package exports an OpenCode entrypoint and ships its skills and rules", () => {
+	const dir = path.join(ROOT, "plugins", plugin);
+	const npm = readJson(path.join(dir, "package.json"));
+	const entry = npm.exports?.["."];
+	assert.ok(entry, "exports an entrypoint");
+	assert.ok(existsSync(path.join(dir, entry)), "entrypoint exists");
+	for (const folder of ["opencode", "skills", "lib", "agents"]) {
+		assert.ok(npm.files?.includes(folder), `packs ${folder}/`);
 	}
 });
 
@@ -46,9 +39,13 @@ test("SETUP.md names one release tag and README does not name another", () => {
 	for (const other of named) assert.equal(other, tag, "README tag matches SETUP.md");
 });
 
-test("the repository loads both local plugins from opencode.json", () => {
+test("the repository loads only the roblox-dev plugin", () => {
 	const config = readJson(path.join(ROOT, "opencode.json"));
-	for (const name of ["roblox-dev", "pages"]) {
-		assert.ok(config.plugins.includes(`./plugins/${name}`), `${name} is loaded`);
-	}
+	assert.deepEqual(config.plugins, ["./plugins/roblox-dev"]);
+});
+
+test("the template is a single root-place project", () => {
+	assert.ok(existsSync(path.join(ROOT, "template", "default.project.json")));
+	assert.ok(existsSync(path.join(ROOT, "template", "src")));
+	assert.ok(!existsSync(path.join(ROOT, "template", "places.json")));
 });

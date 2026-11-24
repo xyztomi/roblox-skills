@@ -9,6 +9,8 @@
     "test": "node --test",
     "reload": "node tools/reload.mjs",
     "pack:plugins": "node tools/pack-plugins.mjs",
-    "check:plugin-package": "node tools/check-plugin-package.mjs"
+    "check:plugin-package": "node tools/check-plugin-package.mjs",
+    "doctor": "node tools/doctor.mjs",
+    "check:release": "node tools/check-release.mjs"
   }
 }
