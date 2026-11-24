@@ -6,10 +6,10 @@ This repo ships OpenCode plugins and a Roblox starter project. It is not a Roblo
 
 - `plugins/roblox-dev/`: skills, the `reviewer` agent, the OpenCode adapter in `opencode/`, and the Claude Code hooks in `hooks/` kept for backward compatibility. `package.json` exports `opencode/server.js`.
 - `plugins/pages/`: the optional `html-kit` skill, its OpenCode adapter, and its Claude gate.
-- `template/`: the game project shipped to users as `roblox-game-template.zip`. Its `AGENTS.md` and its Rojo, selene, and StyLua checks apply to the user's game repo, not here. `template/tools/setup-toolchain.sh` is the tested toolchain installer.
+- `template/`: the game project shipped to users as `roblox-game-template.zip`. Its `AGENTS.md` and its Rojo, selene, and StyLua checks apply to the user's game repo, not here.
 - `evals/`: the OpenCode eval harness and saved historical results. Nothing in it ships.
 - `opencode.json`: loads both local plugins for sessions in this repo.
-- `SETUP.md`: an executable prompt for a fresh Apple Silicon Mac. Keep steps ordered, idempotent, and each with its "Done when" check.
+- `SETUP.md`: a short project-creation checklist for the template. It assumes the toolchain in the README is installed and does not install it.
 
 ## Commands
 
