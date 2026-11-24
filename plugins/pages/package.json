@@ -5,7 +5,7 @@
   "type": "module",
   "license": "MIT",
   "author": {
-    "name": "Crusherfire Media"
+    "name": "xyztomi"
   },
   "homepage": "https://github.com/xyztomi/roblox-skills",
   "repository": "https://github.com/xyztomi/roblox-skills",
@@ -23,5 +23,8 @@
     "plans",
     "reports",
     "diagrams"
+  ],
+  "contributors": [
+    "Crusherfire Media"
   ]
 }

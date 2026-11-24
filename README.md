@@ -86,7 +86,7 @@ Studio once. You also need a GitHub account.
 Open an empty folder in OpenCode and paste:
 
 ```
-Set up this folder as a Roblox game project with the Crusherfire Roblox AI workflow. Download the latest `SETUP.md` from `https://github.com/xyztomi/roblox-skills/releases/latest/download/SETUP.md` with `curl -L` and follow it step by step. Skip anything that's already installed, and stop and ask me before any step that needs my accounts or keys.
+Set up this folder as a Roblox game project with the xyztomi Roblox AI workflow. Download the latest `SETUP.md` from `https://github.com/xyztomi/roblox-skills/releases/latest/download/SETUP.md` with `curl -L` and follow it step by step. Skip anything that's already installed, and stop and ask me before any step that needs my accounts or keys.
 ```
 
 OpenCode follows the [`SETUP.md`](SETUP.md) attached to the latest release. Along the way you sign in
