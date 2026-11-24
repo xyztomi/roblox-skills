@@ -1,5 +1,8 @@
 # Eval results: every roblox-dev skill (2026-11-13 to 2026-11-16)
 
+Historical: these runs used the earlier Claude Code harness. Rerun with the current OpenCode harness
+before comparing new results.
+
 Each skill has 4 or 5 tasks, run 3 times per setup on Opus. With-skill loads the whole
 `roblox-dev` plugin as shipped (skills plus hooks); baseline loads no Roblox plugin. A blind A/B
 Opus judge compares each with-skill run against a baseline run of the same task. Trigger tests

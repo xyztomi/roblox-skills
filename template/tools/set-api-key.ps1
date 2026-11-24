@@ -3,7 +3,7 @@ Stores the Open Cloud API key as this GitHub repo's ROBLOX_API_KEY secret.
 The key is read from hidden input and piped to `gh secret set`, so it never
 shows on screen, in the terminal history, or on a command line.
 
-Run it yourself in a terminal at the repo root (not through Claude):
+Run it yourself in a terminal at the repo root (not through the agent):
     powershell -ExecutionPolicy Bypass -File tools/set-api-key.ps1
 #>
 $ErrorActionPreference = "Stop"

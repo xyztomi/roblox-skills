@@ -8,13 +8,8 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
+import { isHtmlKitSkill, pageProblems } from './lib/page.mjs';
 
-const SKILL = 'html-kit';
-const SKILL_NAME = /^\/?(?:pages:)?html-kit$/;
-const HTML_FILE = /\.html?$/i;
-const LOADS_KIT = /<script\b[^>]*\bsrc\s*=\s*["']?[^"'\s>]*kit\/kit\.js\b/i;
-const OPTED_OUT = /<html\b[^>]*\bdata-kit\s*=\s*["']?off\b/i;
-// Compaction re-attaches each loaded skill cut at 20,000 characters and ends a cut one with this.
 const TRUNCATED_SKILL_MARKER = 'skill content truncated for compaction';
 const AGENT_ID = /^[A-Za-z0-9_-]{1,64}$/;
 const STATE_KEY = /^[A-Za-z0-9_-]{1,100}$/;
@@ -73,15 +68,15 @@ function blocksOf(entry) {
 function skillLoaded(entries) {
   return entries.some((entry) => {
     if (entry?.type === 'attachment' && entry.attachment?.type === 'invoked_skills' && Array.isArray(entry.attachment.skills)) {
-      return entry.attachment.skills.some((skill) => SKILL_NAME.test(String(skill?.name ?? ''))
+      return entry.attachment.skills.some((skill) => isHtmlKitSkill(skill?.name)
         && !String(skill?.content ?? '').includes(TRUNCATED_SKILL_MARKER));
     }
     return blocksOf(entry).some((block) => {
       if (entry.type === 'assistant' && block?.type === 'tool_use' && block.name === 'Skill') {
-        return SKILL_NAME.test(String(block.input?.skill ?? ''));
+        return isHtmlKitSkill(block.input?.skill);
       }
       if (entry.type === 'user' && block?.type === 'text' && typeof block.text === 'string') {
-        return [...block.text.matchAll(/<command-name>([^<\s]+)<\/command-name>/g)].some((match) => SKILL_NAME.test(match[1]));
+        return [...block.text.matchAll(/<command-name>([^<\s]+)<\/command-name>/g)].some((match) => isHtmlKitSkill(match[1]));
       }
       return false;
     });
@@ -118,22 +113,14 @@ function writeStreak(file, value) {
 function problemsWith(input) {
   const path = input.tool_input?.file_path;
   const content = input.tool_input?.content;
-  if (typeof path !== 'string' || typeof content !== 'string' || !HTML_FILE.test(path) || existsSync(path)) {
+  if (typeof path !== 'string' || typeof content !== 'string') {
     return [];
   }
-  const problems = [];
   const transcript = transcriptPathFor(input);
-  if (transcript !== undefined && existsSync(transcript) && !skillLoaded(entriesSinceCompaction(transcript))) {
-    problems.push(`Load \`pages:${SKILL}\` with the Skill tool first: it sets up the kit folder and lists the components.`);
-  }
-  if (!LOADS_KIT.test(content) && !OPTED_OUT.test(content)) {
-    problems.push(
-      'New pages are written with the html-kit: start the file with the first line the skill gives, which loads ' +
-      'kit/kit.js, and write the content as kit components. A page that has to be freeform (a game-UI mockup) ' +
-      'adds data-kit="off" to its <html> tag instead.',
-    );
-  }
-  return problems;
+  const loaded = transcript !== undefined && existsSync(transcript)
+    ? skillLoaded(entriesSinceCompaction(transcript))
+    : true;
+  return pageProblems({ path, content, exists: existsSync(path), skillLoaded: loaded });
 }
 
 function main() {

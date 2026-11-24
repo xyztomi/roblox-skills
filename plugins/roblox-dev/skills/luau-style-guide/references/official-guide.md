@@ -19,7 +19,7 @@ The examples throughout this skill are our own.
 
 ## Where these rules depart from it
 
-The project's own `CLAUDE.md` wins wherever it overrides or tightens a rule
+The project's own `AGENTS.md` wins wherever it overrides or tightens a rule
 in SKILL.md. Known differences from the Roblox guide:
 
 - Member casing depends on what the member is, where the Roblox guide uses

@@ -34,7 +34,7 @@ to `images.md`.
 | Locked aspect ratio | `UIAspectRatioConstraint` |
 | Min and max width or height | `UISizeConstraint` |
 | Overlapping siblings | Explicit `ZIndex`, highest for the layer at the top of Figma's layer list |
-| Rotation | `Rotation`, about the center (layouts ignore it: the `roblox-dev:vide` skill's `references/layout-quality.md`) |
+| Rotation | `Rotation`, about the center (layouts ignore it: the `vide` skill's `references/layout-quality.md`) |
 
 ## Auto layout
 
@@ -86,7 +86,7 @@ to `images.md`.
 | Gradient stroke | A `UIGradient` under the `UIStroke` |
 | Corner radius | `UICorner` with `CornerRadius` in offsets; `UDim.new(1, 0)` for a pill or circle |
 
-A surface inside a rounded frame and a stroke inside a clipping frame both need care: the `roblox-dev:vide`
+A surface inside a rounded frame and a stroke inside a clipping frame both need care: the `vide`
 skill's `references/layout-quality.md` covers them.
 
 ## Shadows
@@ -107,7 +107,7 @@ until the edge matches the screenshot.
 
 | Figma | Roblox |
 |---|---|
-| Opacity on a frame with children | Fold it into each child's transparency (Fills, above). Where overlapping children must fade as one picture, a `CanvasGroup` with `GroupTransparency` (with Vide, the `roblox-dev:vide-performance` skill: a CanvasGroup only while it is drawn) |
+| Opacity on a frame with children | Fold it into each child's transparency (Fills, above). Where overlapping children must fade as one picture, a `CanvasGroup` with `GroupTransparency` (with Vide, the `vide-performance` skill: a CanvasGroup only while it is drawn) |
 | Clip content | `ClipsDescendants`, which clips to the square box |
 | Clip content on a rounded frame | A `CanvasGroup` with a `UICorner`, or round the children themselves |
 
@@ -131,8 +131,8 @@ until the edge matches the screenshot.
 | Text stroke | `UIStroke` with `ApplyStrokeMode = Contextual` |
 | Gradient text | A `UIGradient` on the label |
 
-Text sizing, strokes, and gradients on text all have costs and rules in the `roblox-dev:vide` skill's
-`references/screens.md` and the `roblox-dev:roblox-performance` skill's `references/ui.md`.
+Text sizing, strokes, and gradients on text all have costs and rules in the `vide` skill's
+`references/screens.md` and the `roblox-performance` skill's `references/ui.md`.
 
 ## Lines and images
 
@@ -160,11 +160,11 @@ Text sizing, strokes, and gradients on text all have costs and rules in the `rob
 
 | Figma | Roblox |
 |---|---|
-| Transition with a duration and easing | With Vide, a `spring` (the `roblox-dev:vide` skill); otherwise a tween with the same duration and the nearest `Enum.EasingStyle` |
+| Transition with a duration and easing | With Vide, a `spring` (the `vide` skill); otherwise a tween with the same duration and the nearest `Enum.EasingStyle` |
 | Spring with mass, stiffness, and damping | Period = 2π·√(mass / stiffness), damping ratio = damping / (2·√(stiffness·mass)) |
 | Overlays (open as overlay) | A layer shown above the screen, with a scrim frame for the dim |
 | Scroll overflow | `ScrollingFrame` with `AutomaticCanvasSize` |
 
-Where the design's motion conflicts with the project's motion rules (the `roblox-dev:vide` skill prefers
+Where the design's motion conflicts with the project's motion rules (the `vide` skill prefers
 damped motion for changes the game makes), ask the user which wins. Motion costs are in the
-`roblox-dev:roblox-performance` skill's `references/ui.md`.
+`roblox-performance` skill's `references/ui.md`.

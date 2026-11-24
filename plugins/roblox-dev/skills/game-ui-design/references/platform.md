@@ -2,8 +2,8 @@
 
 What the engine and platform decide for you, and the numbers they don't give. This file is about
 design consequences. The code that reads these values live (one screen module, one root
-`UIScale`, the touch control layout) is in the `roblox-dev:vide` skill's `references/screens.md`; what UI
-costs is in `roblox-dev:roblox-performance`'s `references/ui.md`. Many docs pages render fully only as their
+`UIScale`, the touch control layout) is in the `vide` skill's `references/screens.md`; what UI
+costs is in `roblox-performance`'s `references/ui.md`. Many docs pages render fully only as their
 `.md` variants or in the `Roblox/creator-docs` GitHub source, which is why links point there.
 
 ## Contents
@@ -62,7 +62,7 @@ costs is in `roblox-dev:roblox-performance`'s `references/ui.md`. Many docs page
   must keep their state across death (settings, an open inventory) need this [inference].
 - On touch, Roblox draws the thumbstick and jump button in `PlayerGui.TouchGui`;
   `GuiService.TouchControlsEnabled = false` hides them [standard]. Nothing documents whether
-  `CoreUISafeInsets` avoids them, so assume it doesn't [inference]. `roblox-dev:vide`'s `references/screens.md` has the
+  `CoreUISafeInsets` avoids them, so assume it doesn't [inference]. `vide`'s `references/screens.md` has the
   measured positions.
 - No official 2026 map of core UI placement per platform exists (thumbstick, jump, hotbar, player
   list, console layout).
@@ -76,7 +76,7 @@ costs is in `roblox-dev:roblox-performance`'s `references/ui.md`. Many docs page
   ([Cross-platform](https://create.roblox.com/docs/projects/cross-platform.md)).
 - **`IsTenFootInterface()` is deprecated**; the docs say to use `ViewportDisplaySize` instead
   [standard].
-- The pattern the `roblox-dev:vide` skill uses, offsets authored for a 1080-tall screen and one
+- The pattern the `vide` skill uses, offsets authored for a 1080-tall screen and one
   root `UIScale`, is community practice, not Roblox guidance [practitioner]; its
   `references/screens.md` has it.
   `UIScale` other than 1 breaks `AutomaticSize` [practitioner, staff reply].
@@ -221,6 +221,6 @@ Roblox's console guidance [standard]
   elements individually when that's cheap enough [inference].
 - Small images stay under 256x256; icons share a sprite sheet [standard].
 - A ScreenGui redraws as a whole when anything inside changes, so a timer or health bar that
-  changes every frame lives in its own small ScreenGui (`roblox-dev:roblox-performance` `references/ui.md`,
+  changes every frame lives in its own small ScreenGui (`roblox-performance` `references/ui.md`,
   measured).
 - A disabled ScreenGui doesn't render or take input, so closed menus cost nothing [standard].

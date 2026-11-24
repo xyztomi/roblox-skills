@@ -58,10 +58,8 @@ Store the key with the script, run in your own terminal at the repo root. It rea
 hidden input, so the key never shows on screen or in your history:
 
 ```
-powershell -ExecutionPolicy Bypass -File tools/set-api-key.ps1
+bash tools/set-api-key.sh
 ```
-
-On macOS or Linux, run `bash tools/set-api-key.sh`.
 
 Then fill in `places.json` and commit it. The ids are in each place's Creator Dashboard URL:
 `.../experiences/<universe id>/places/<place id>/...`. They aren't secrets.
@@ -76,7 +74,7 @@ Then fill in `places.json` and commit it. The ids are in each place's Creator Da
 ```
 
 An experience can stay `null` until it exists. With more places, each gets a line under `places`
-with its id in all three experiences (`CLAUDE.md`, "To add a place").
+with its id in all three experiences (`AGENTS.md`, "To add a place").
 
 Last, add a branch ruleset for `main` in the repo's settings that requires the `Checks` and `Specs`
 status checks. Changes then reach `main`, and with it staging, only through a passing pull request.

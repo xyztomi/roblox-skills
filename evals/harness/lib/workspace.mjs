@@ -28,16 +28,17 @@ export function isInside(parent, child) {
 	return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
 }
 
-// Claude Code loads CLAUDE.md files from every folder above the working directory.
-// Trials run below dir, so any such file would reach both setups. The home folder's
-// .claude/CLAUDE.md is user memory, which isolationArgs already excludes.
+// OpenCode loads project AGENTS.md files and .opencode directories from the
+// workspace and its ancestors. Trials run below dir, so any such file would reach
+// both setups. The global config directory is replaced per trial, so user config,
+// skills, and plugins there do not load.
 export function ancestorMemoryFiles(dir) {
 	const home = path.resolve(os.homedir());
 	const found = [];
 	let current = path.resolve(dir);
 	for (;;) {
-		const candidates = ["CLAUDE.md", "CLAUDE.local.md"];
-		if (current !== home) candidates.push(path.join(".claude", "CLAUDE.md"));
+		const candidates = ["AGENTS.md", "CLAUDE.md", ".opencode/opencode.json", ".opencode/opencode.jsonc", ".opencode/skills", ".opencode/plugins"];
+		if (current !== home) candidates.push(path.join(".claude", "CLAUDE.md"), path.join(".claude", "skills"));
 		for (const name of candidates) {
 			const file = path.join(current, name);
 			if (existsSync(file)) found.push(file);

@@ -54,8 +54,8 @@ Attributes live in `.meta.json` as real JSON values: booleans for flags, numbers
 ```
 
 Save every JSON file as UTF-8 without a byte order mark: Rojo can't parse a project or meta file
-that starts with one. Windows PowerShell 5.1's `Set-Content` and `Out-File` add a BOM, so write
-JSON with your file tools. After saving one, read its first three bytes
+that starts with one. Some Windows editors add a BOM; macOS editors normally do not. Write JSON with
+your file tools. After saving one, read its first three bytes
 (`head -c 3 <file> | od -An -tx1`); if they are `ef bb bf`, rewrite the file without them.
 
 `roblox_packages/`, `sourcemap.json`, and build output are generated; keep them in `.gitignore`.
@@ -107,7 +107,7 @@ delete, move, and rename files often, so check after every such step:
 - **When you started `rojo serve`** (as a background process), read its output for
   `Rojo crashed!` or confirm the process is still running.
 - **When the user runs it**, confirm the project's port still listens (`servePort`, default
-  34872): `netstat -ano | findstr :34872` on Windows, `lsof -i :34872` elsewhere.
+  34872): `lsof -i :34872` on macOS, or `netstat -ano | findstr :34872` on Windows.
 - **If it stopped**, restart it (`rojo serve`, or with `--port <port>` for a second server) and
   ask the user to click Connect in the Rojo plugin. Then confirm your last change reached Studio.
 - Mention the crash in a report or pull request only when you saw `rojo serve` stop.

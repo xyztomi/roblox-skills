@@ -11,7 +11,7 @@ carries only content, so it costs about as many tokens as markdown and every pag
 
 ## 1. Put the kit beside the pages
 
-Pages go where the project keeps them (its CLAUDE.md says where). That folder's root holds one
+Pages go where the project keeps them (its AGENTS.md says where). That folder's root holds one
 `kit/` copy: `kit.js`, `md2html.cjs`, and `LICENSE`.
 
 - No `kit/` there yet: copy this skill's `kit/` folder in.

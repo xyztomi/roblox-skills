@@ -5,7 +5,7 @@ client by sending only what changed (delta patches). The server decides which si
 receives; the client applies patches to its own signals, and UI reads those.
 
 Place the server half, the client half, and the remotes by the project's architecture rules (with
-`roblox-dev:game-architecture`: server code in the server service, client code in the client service, remotes
+`game-architecture`: server code in the server service, client code in the client service, remotes
 in the system's Network module).
 
 ## Server

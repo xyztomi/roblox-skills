@@ -478,4 +478,4 @@ end)
 
 - `assert` stays out of hot paths because every call costs a little even when
   it passes, and that adds up over thousands of calls per frame (the
-  `roblox-dev:roblox-performance` skill has the numbers).
+  `roblox-performance` skill has the numbers).

@@ -1,6 +1,6 @@
 ---
 name: vide-performance
-description: Keeping Vide UI fast in Roblox, and its sounds cached so they play on time. Load it with the roblox-dev:vide skill before building UI that opens and closes often, keeps pages or tabs, holds hundreds of instances or a long scrolling list, uses a CanvasGroup, or plays sounds; when a panel, tab switch, list, or world board stalls a frame or stays slow while it animates; when a closed panel still costs time; when a UI sound plays late; when UI flickers, draws blank at low graphics quality, or blinks white for a frame; and when asked to profile or optimize Vide UI.
+description: Keeping Vide UI fast in Roblox, and its sounds cached so they play on time. Load it with the vide skill before building UI that opens and closes often, keeps pages or tabs, holds hundreds of instances or a long scrolling list, uses a CanvasGroup, or plays sounds; when a panel, tab switch, list, or world board stalls a frame or stays slow while it animates; when a closed panel still costs time; when a UI sound plays late; when UI flickers, draws blank at low graphics quality, or blinks white for a frame; and when asked to profile or optimize Vide UI.
 ---
 
 # Vide performance
@@ -10,14 +10,14 @@ changing the look, and how to find them.
 
 It builds on two skills. Load them too:
 
-- `roblox-dev:vide` for how Vide works (scopes, `show`/`indexes`/`values`, `derive`, springs, `cleanup`).
-- `roblox-dev:roblox-performance` for the ground rules (no number, no optimization; same workload before and
+- `vide` for how Vide works (scopes, `show`/`indexes`/`values`, `derive`, springs, `cleanup`).
+- `roblox-performance` for the ground rules (no number, no optimization; same workload before and
   after; revert what does not move the number; behavior-changing levers need the user's
   approval; the report format), for measuring in general and reading MicroProfiler dumps
   (`references/measuring.md`), and for the engine facts about UI (`references/ui.md`). This
   skill links to those facts instead of repeating them.
 
-**Evidence.** Every number here is `[in-game]` (the evidence tags in `roblox-dev:roblox-performance`) unless
+**Evidence.** Every number here is `[in-game]` (the evidence tags in `roblox-performance`) unless
 the rule says otherwise. That game ran Vide 0.4 with a local patch that makes unsubscribing a
 dependent constant-time, so destroying large subtrees cost less there than in stock Vide. Measure
 in your place before relying on a number.
@@ -48,7 +48,7 @@ This section is the one place that decides when Vide UI gets these patterns.
   tree", "Animations that scale a panel lay out all of it on every frame", and "Rerun a binding
   only when its output changes". Apply them when a profile names the cost, or when a design-time
   estimate does: a build of hundreds of instances on every open, switch, or visit. Otherwise
-  write plain Vide as the `roblox-dev:vide` skill teaches. Keeping instances costs memory for as long as
+  write plain Vide as the `vide` skill teaches. Keeping instances costs memory for as long as
   they live (`roblox-performance/references/instances-pooling.md`).
 
 ### Keep UI that comes and goes
@@ -143,7 +143,7 @@ counted sound cache and holds if it has them.
 - A hold whose condition reads several sources goes through `derive`, so a rerun that gives the
   same answer never releases and re-holds the sounds.
 - The hold does nothing while the game is not running, so a story caches nothing
-  (`roblox-dev:vide-ui-labs`, "Keep UI safe to run in edit mode").
+  (`vide-ui-labs`, "Keep UI safe to run in edit mode").
 - Check with the probe in `references/finding-costs.md`.
 
 ### CanvasGroups exist only while they are drawn

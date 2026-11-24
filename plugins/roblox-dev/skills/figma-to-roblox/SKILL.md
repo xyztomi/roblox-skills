@@ -11,7 +11,7 @@ visual in the design either becomes UI instances (**native**) or is exported onc
 (**baked**), and that choice is made per visual before anything is built.
 
 This skill covers the translation from Figma. How the UI code itself is written comes from the
-project's UI skills: with Vide, load `roblox-dev:vide` and `roblox-dev:vide-ui-labs` alongside this one.
+project's UI skills: with Vide, load `vide` and `vide-ui-labs` alongside this one.
 
 | Read | Before |
 |---|---|
@@ -28,7 +28,7 @@ project's UI skills: with Vide, load `roblox-dev:vide` and `roblox-dev:vide-ui-l
      file per component and screen, and the screenshots. Later steps and sessions read the files
      instead of querying Figma again.
    - Record the **reference size**: the size the project authors UI at. With Vide that is offsets
-     for a screen 1080 pixels tall, grown on larger screens by one `UIScale` (the `roblox-dev:vide` skill's
+     for a screen 1080 pixels tall, grown on larger screens by one `UIScale` (the `vide` skill's
      `references/screens.md`). Convert a desktop frame by 1080 divided by its height (a
      1920x1080 frame is 1, a 3840x2160 frame is 0.5). Take a phone or tablet frame's numbers as
      they are: they become that layout's metrics at scale 1.
@@ -61,7 +61,7 @@ project's UI skills: with Vide, load `roblox-dev:vide` and `roblox-dev:vide-ui-l
    state in turn and compare it with its screenshot: the `AbsoluteSize` and `AbsolutePosition` of
    each element against the layer boxes saved in step 1, then color, text, and alignment by
    sight. Check the other device frames by the UI skill's screen checks, and run the project's
-   layout checks (with Vide, "Measuring the result" in `roblox-dev:vide`'s
+   layout checks (with Vide, "Measuring the result" in `vide`'s
    `references/layout-quality.md`). Done when every measured box matches to within 2
    pixels and every remaining difference is written down for the user, with a list of what they
    should check by eye.
